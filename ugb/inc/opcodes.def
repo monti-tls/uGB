@@ -36,17 +36,17 @@ DEF_OPCODE(, 15, 1, 4,  "Z1H_", "DEC D",        _H3(D, --D); _Z(D);           )
 DEF_OPCODE(, 16, 2, 8,  "____", "LD D, d8",     D = d8;                       )
 DEF_OPCODE(, 17, 1, 4,  "000C", "RLA",          t8 = _fC; _Cs(A & 0x80); \
                                                 A = (A << 1) | t8;            )
-DEF_OPCODE(, 18, 2, 12, "____", "JR r8",        PC += r8;                     )
+DEF_OPCODE(, 18, 2, 12, "____", "JR PCr8",      PC += r8;                     )
 DEF_OPCODE(, 19, 1, 8,  "_0HC", "ADD HL, DE",   _C15H11(HL, HL = HL + DE);    )
 DEF_OPCODE(, 1A, 1, 8,  "____", "LD A, (DE)",   r(DE, &A);                    )
 DEF_OPCODE(, 1B, 1, 8,  "____", "DEC DE",       --DE;                         )
 DEF_OPCODE(, 1C, 1, 4,  "Z0H_", "INC E",        _H3(E, ++E); _Z(E);           )
 DEF_OPCODE(, 1D, 1, 4,  "Z1H_", "DEC E",        _H3(E, --E); _Z(E);           )
-DEF_OPCODE(, 1E, 2, 8,  "____", "LD E, d8",     E = d8;                       )
+DEF_OPCODE(, 1E, 2, 8,  "____", "LD E, PCd8",   E = d8;                       )
 DEF_OPCODE(, 1F, 1, 4,  "000C", "RRA",          t8 = _fC; _Cs(A & 0x01); \
                                                 A = (A >> 1) | (t8 << 7);     )
 
-DEF_OPCODE(, 20, 2, 8,  "____", "JR NZ, r8",    _NIF(_fZ, PC += r8;, 4);      )
+DEF_OPCODE(, 20, 2, 8,  "____", "JR NZ, PCr8",  _NIF(_fZ, PC += r8;, 4);      )
 DEF_OPCODE(, 21, 3, 12, "____", "LD HL, d16",   HL = d16;                     )
 DEF_OPCODE(, 22, 1, 8,  "____", "LD (HL+), A",  w(HL++, A);                   )
 DEF_OPCODE(, 23, 1, 8,  "____", "INC HL",       ++HL;                         )
@@ -54,7 +54,7 @@ DEF_OPCODE(, 24, 1, 4,  "Z0H_", "INC H",        _H3(H, ++H); _Z(H);           )
 DEF_OPCODE(, 25, 1, 4,  "Z1H_", "DEC H",        _H3(H, --H); _Z(H);           )
 DEF_OPCODE(, 26, 2, 8,  "____", "LD H, d8",     H = d8;                       )
 DEF_OPCODE(, 27, 1, 4,  "Z_0C", "DAA",          TODO;                         )
-DEF_OPCODE(, 28, 2, 8,  "____", "JR Z, r8",     _IF(_fZ, PC += r8, 4);        )
+DEF_OPCODE(, 28, 2, 8,  "____", "JR Z, PCr8",   _IF(_fZ, PC += r8, 4);        )
 DEF_OPCODE(, 29, 1, 8,  "_0HC", "ADD HL, HL",   _C15H11(HL, HL = HL + HL);    )
 DEF_OPCODE(, 2A, 1, 8,  "____", "LD A, (HL+)",  r(HL++, &A);                  )
 DEF_OPCODE(, 2B, 1, 8,  "____", "DEC HL",       --HL;                         )
@@ -63,7 +63,7 @@ DEF_OPCODE(, 2D, 1, 4,  "Z1H_", "DEC L",        _H3(L, --L); _Z(L);           )
 DEF_OPCODE(, 2E, 2, 8,  "____", "LD L, d8",     L = d8;                       )
 DEF_OPCODE(, 2F, 1, 4,  "_11_", "CPL",          A = ~A;                       )
 
-DEF_OPCODE(, 30, 2, 8,  "____", "JR NC, r8",    _NIF(_fC, PC += r8;, 4);      )
+DEF_OPCODE(, 30, 2, 8,  "____", "JR NC, PCr8",  _NIF(_fC, PC += r8;, 4);      )
 DEF_OPCODE(, 31, 3, 12, "____", "LD SP, d16",   SP = d16;                     )
 DEF_OPCODE(, 32, 1, 8,  "____", "LD (HL-), A",  w(HL--, A);                   )
 DEF_OPCODE(, 33, 1, 8,  "____", "INC SP",       ++SP;                         )
@@ -73,7 +73,7 @@ DEF_OPCODE(, 35, 1, 12, "Z1H_", "DEC (HL)",     r(HL, &t8); _H3(t8, --t8); \
                                                 _Z(t8); w(HL, t8);            )
 DEF_OPCODE(, 36, 2, 12, "____", "LD (HL), d8",  w(HL, d8);                    )
 DEF_OPCODE(, 37, 1, 4,  "_001", "SCF",                                        )
-DEF_OPCODE(, 38, 2, 8,  "____", "JR C, r8",     _IF(_fC, PC += r8, 4);        )
+DEF_OPCODE(, 38, 2, 8,  "____", "JR C, PCr8",   _IF(_fC, PC += r8, 4);        )
 DEF_OPCODE(, 39, 1, 8,  "_0HC", "ADD HL, SP",   _C15H11(HL, HL = HL + SP);    )
 DEF_OPCODE(, 3A, 1, 8,  "____", "LD A, (HL-)",  r(HL--, &A);                  )
 DEF_OPCODE(, 3B, 1, 8,  "____", "DEC SP",       --SP;                         )
@@ -261,6 +261,40 @@ DEF_OPCODE(, DC, 3, 12, "____", "CALL C, a16",  _IF(C, _CALL(a16), 12);         
 // DEF_OPCODE(, DD) invalid
 DEF_OPCODE(, DE, 2, 8,  "Z1HC", "SBC A, d8",    _SBC(d8);                          )
 DEF_OPCODE(, DF, 1, 16, "____", "RST 18",       _CALL(0x18);                       )
+
+DEF_OPCODE(, E0, 2, 12, "____", "LDH (a8), A",  w(0xFF00 + a8, A);                 )
+DEF_OPCODE(, E1, 1, 12, "____", "POP HL",       _POP(HL);                          )
+DEF_OPCODE(, E2, 2, 8,  "____", "LD (C), A",    w(0xFF00 + C, A);                  )
+// DEF_OPCODE(, E3) invalid
+// DEF_OPCODE(, E4) invalid
+DEF_OPCODE(, E5, 1, 16, "____", "PUSH HL",      _PUSH(HL);                         )
+DEF_OPCODE(, E6, 2, 8,  "Z010", "AND d8",       A &= d8; _Z(A);                    )
+DEF_OPCODE(, E7, 1, 16, "____", "RST 20",       _CALL(0x20);                       )
+DEF_OPCODE(, E8, 2, 16, "00HC", "ADD SP, r8",   _C15H11(SP, SP += r8);             )
+DEF_OPCODE(, E9, 1, 4,  "____", "JP (HL)",      PC = HL;                           )
+DEF_OPCODE(, EA, 3, 16, "____", "LD (a16), A",  w(a16, A);                         )
+// DEF_OPCODE(, EB) invalid
+// DEF_OPCODE(, EC) invalid
+// DEF_OPCODE(, ED) invalid
+DEF_OPCODE(, EE, 2, 8,  "Z000", "XOR d8",       A ^= d8; _Z(A);                    )
+DEF_OPCODE(, EF, 1, 16, "____", "RST 28",       _CALL(0x28);                       )
+
+DEF_OPCODE(, F0, 2, 12, "____", "LDH A, (a8)",  r(0xFF00 + a8, &A);                )
+DEF_OPCODE(, F1, 1, 12, "ZNHC", "POP AF",       _POP(AF);                          )
+DEF_OPCODE(, F2, 2, 8,  "____", "LD A, (C)",    r(0xFF00 + C, &A);                 )
+DEF_OPCODE(, F3, 1, 4,  "____", "DI",           IMR = 0;                           )
+// DEF_OPCODE(, F4) invalid
+DEF_OPCODE(, F5, 1, 16, "____", "PUSH AF",      _PUSH(AF);                         )
+DEF_OPCODE(, F6, 2, 8,  "Z000", "OR d8",        A |= d8; _Z(A);                    )
+DEF_OPCODE(, F7, 1, 16, "____", "RST 30",       _CALL(0x30);                       )
+DEF_OPCODE(, F8, 2, 12, "00HC", "LD HL, SPr8",  _C15H11(HL, HL += (SP + r8));      )
+DEF_OPCODE(, F9, 1, 8,  "____", "LD SP, HL",    SP = HL;                           )
+DEF_OPCODE(, FA, 3, 16, "____", "LD A, (a16)",  r(a16, &A);                        )
+DEF_OPCODE(, FB, 1, 4,  "____", "EI",           IMR = 1;                           )
+// DEF_OPCODE(, FC) invalid
+// DEF_OPCODE(, FD) invalid
+DEF_OPCODE(, FE, 2, 8,  "Z1HC", "CP d8",        _ZC15H11(A, A - d8);               )
+DEF_OPCODE(, FF, 1, 16, "____", "RST 38",       _CALL(0x38);                       )
 
 #undef _CALL
 #undef _PUSH
