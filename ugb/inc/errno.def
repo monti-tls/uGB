@@ -1,0 +1,16 @@
+#ifndef DEF_ERRNO
+#define DEF_ERRNO(value, id, string)
+#endif
+
+DEF_ERRNO(0,  OK,        "No error")
+DEF_ERRNO(-1, MALLOC,    "malloc() failed")
+DEF_ERRNO(-2, BADARGS,   "bad arguments")
+DEF_ERRNO(-3, BADCONF,   "bad configuration parameter")
+DEF_ERRNO(-4, MMU_MAP,   "Access to unmapped memory")
+DEF_ERRNO(-5, MMU_RO,    "Writing to read-only memory")
+DEF_ERRNO(-6, MMU_CLASH, "Conflicting MMU maps")
+DEF_ERRNO(-7, BADOP,     "Bad / unimplemented opcode")
+
+DEF_ERRNO(-7, NERRNO,  0)
+
+#undef DEF_ERRNO
