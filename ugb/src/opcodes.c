@@ -69,8 +69,8 @@ ssize_t ugb_disassemble(char* str, size_t size, uint8_t* code, ssize_t addr)
 /*** Define external opcode tables ***/
 /*************************************/
 
-ugb_opcode ugb_opcodes_table[0xFF];
-ugb_opcode ugb_opcodes_tableCB[0xFF];
+ugb_opcode ugb_opcodes_table[0x100];
+ugb_opcode ugb_opcodes_tableCB[0x100];
 
 #define DEF_OPCODE(prefix, opcode, ...) extern int _ugb_opcode ## prefix ## opcode(ugb_cpu*, uint8_t[]);
 #include "opcodes.def"
@@ -92,40 +92,40 @@ static void __attribute__((constructor)) _ugb_opcodes_init()
 /****************************************************/
 
 // Registers shortcuts
-#define SP  *cpu->regs.SP
+#define SP  (*cpu->regs.SP)
 #define SPl ((uint8_t*) &SP)[0]
 #define SPh ((uint8_t*) &SP)[1]
-#define PC  *cpu->regs.PC
+#define PC  (*cpu->regs.PC)
 #define PCl ((uint8_t*) &PC)[0]
 #define PCh ((uint8_t*) &PC)[1]
-#define IE  *cpu->regs.IE
-#define AF  *cpu->regs.AF
+#define IE  (*cpu->regs.IE)
+#define AF  (*cpu->regs.AF)
 #define AFl ((uint8_t*) &AF)[0]
 #define AFh ((uint8_t*) &AF)[1]
-#define BC  *cpu->regs.BC
+#define BC  (*cpu->regs.BC)
 #define BCl ((uint8_t*) &BC)[0]
 #define BCh ((uint8_t*) &BC)[1]
-#define DE  *cpu->regs.DE
+#define DE  (*cpu->regs.DE)
 #define DEl ((uint8_t*) &DE)[0]
 #define DEh ((uint8_t*) &DE)[1]
-#define HL  *cpu->regs.HL
+#define HL  (*cpu->regs.HL)
 #define HLl ((uint8_t*) &HL)[0]
 #define HLh ((uint8_t*) &HL)[1]
-#define A   *cpu->regs.A
-#define F   *cpu->regs.F
-#define B   *cpu->regs.B
-#define C   *cpu->regs.C
-#define D   *cpu->regs.D
-#define E   *cpu->regs.E
-#define H   *cpu->regs.H
-#define L   *cpu->regs.L
+#define A   (*cpu->regs.A)
+#define F   (*cpu->regs.F)
+#define B   (*cpu->regs.B)
+#define C   (*cpu->regs.C)
+#define D   (*cpu->regs.D)
+#define E   (*cpu->regs.E)
+#define H   (*cpu->regs.H)
+#define L   (*cpu->regs.L)
 
 // Immediate operands shotcuts
-#define d8  *((uint8_t*) &imm[0])
-#define a8  *((uint8_t*) &imm[0])
-#define r8  *((int8_t*) &imm[0])
-#define d16 *((uint16_t*) &imm[0])
-#define a16 *((uint16_t*) &imm[0])
+#define d8  (*((uint8_t*) &imm[0]))
+#define a8  (*((uint8_t*) &imm[0]))
+#define r8  (*((int8_t*) &imm[0]))
+#define d16 (*((uint16_t*) &imm[0]))
+#define a16 (*((uint16_t*) &imm[0]))
 
 // Memory read
 #define r(addr, data) do { if ((err = ugb_mmu_read(cpu->gbm->mmu, (addr), (data))) < 0) return err; } while (0);
@@ -147,6 +147,8 @@ static void __attribute__((constructor)) _ugb_opcodes_init()
 
 // Set F.Z flag if x is zero
 #define _Z(x) do { uint16_t x_ = (x); if (!x_) F |= UGB_REG_F_Z_MSK; } while (0);
+// Assign F.Z flag
+#define _Zs(x) do { uint16_t x_ = (x); if (!x_) F |= UGB_REG_F_Z_MSK; else F &= ~UGB_REG_F_Z_MSK; } while (0);
 // Set F.H flag if half carry from bit 3
 #define _H3(o, n) do { uint16_t o_ = (o); uint16_t n_ = (n); if (((n_ & 0xF) - (o_ & 0xF)) < 0) F |= UGB_REG_F_H_MSK; } while (0);
 // Set F.H flag if half carry from bit 11

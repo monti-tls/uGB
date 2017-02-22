@@ -7,8 +7,7 @@
 #include "gbm.h"
 #include "errno.h"
 
-uint8_t ram_data[256] = { 0, };
-uint8_t rom_data[] =
+uint8_t bios_data[] =
 {
     /* 00000000 */  0x31, 0xfe, 0xff, 0xaf, 0x21, 0xff, 0x9f, 0x32, 0xcb, 0x7c, 0x20, 0xfb, 0x21, 0x26, 0xff, 0x0e,
     /* 00000010 */  0x11, 0x3e, 0x80, 0x32, 0xe2, 0x0c, 0x3e, 0xf3, 0xe2, 0x32, 0x3e, 0x77, 0x77, 0x3e, 0xfc, 0xe0,
@@ -29,6 +28,9 @@ uint8_t rom_data[] =
     /* 00000100 */
 };
 
+uint8_t vram_data[0x2000];
+uint8_t zpage_data[0x7F];
+
 int main(int argc, char** argv)
 {
     int err;
@@ -39,19 +41,26 @@ int main(int argc, char** argv)
     /*** Create memory map **/
     /************************/
 
-    ugb_mmu_map* ram = malloc(sizeof(ugb_mmu_map));
-    ram->type = UGB_MMU_DATA;
-    ram->data = &ram_data[0];
-    ram->high_addr = 0xFFFE;
-    ram->low_addr = ram->high_addr - sizeof(ram_data) + 1;
-    ugb_mmu_add_map(gbm->mmu, ram);
+    ugb_mmu_map* bios = malloc(sizeof(ugb_mmu_map));
+    bios->type = UGB_MMU_RODATA;
+    bios->rodata = &bios_data[0];
+    bios->low_addr = 0x0000;
+    bios->high_addr = bios->low_addr + sizeof(bios_data) - 1;
+    ugb_mmu_add_map(gbm->mmu, bios);
 
-    ugb_mmu_map* rom = malloc(sizeof(ugb_mmu_map));
-    rom->type = UGB_MMU_RODATA;
-    rom->rodata = &rom_data[0];
-    rom->low_addr = 0x0000;
-    rom->high_addr = rom->low_addr + sizeof(rom_data) - 1;
-    ugb_mmu_add_map(gbm->mmu, rom);
+    ugb_mmu_map* vram = malloc(sizeof(ugb_mmu_map));
+    vram->type = UGB_MMU_DATA;
+    vram->data = &vram_data[0];
+    vram->high_addr = 0x9FFF;
+    vram->low_addr = 0x8000;
+    ugb_mmu_add_map(gbm->mmu, vram);
+
+    ugb_mmu_map* zpage = malloc(sizeof(ugb_mmu_map));
+    zpage->type = UGB_MMU_DATA;
+    zpage->data = &zpage_data[0];
+    zpage->high_addr = 0xFFFE;
+    zpage->low_addr = 0xFF80;
+    ugb_mmu_add_map(gbm->mmu, zpage);
 
     /*************************/
     /*** Create CPU, reset ***/
@@ -62,9 +71,9 @@ int main(int argc, char** argv)
     ugb_mmu_write(gbm->mmu, 0xFFFE, 0x0F);
 
     char dis_buf[128];
-    while (*gbm->cpu->regs.PC <= rom->high_addr)
+    while (*gbm->cpu->regs.PC <= bios->high_addr)
     {
-        ugb_disassemble(&dis_buf[0], sizeof(dis_buf), &rom_data[*gbm->cpu->regs.PC], *gbm->cpu->regs.PC);
+        ugb_disassemble(&dis_buf[0], sizeof(dis_buf), &bios_data[*gbm->cpu->regs.PC], *gbm->cpu->regs.PC);
         printf("[%04X] %s\n", *gbm->cpu->regs.PC, &dis_buf[0]);
 
         if ((err = ugb_cpu_step(gbm->cpu)) < 0)
@@ -73,12 +82,12 @@ int main(int argc, char** argv)
             break;
         }
 
-        /*printf(" A = %02X, B = %02X, 0x%02X, ", *cpu->regs.A, *cpu->regs.B, *cpu->regs.C);
+        printf("HL = %04X ", *gbm->cpu->regs.HL);
         printf("F = %c%c%c%c\n\n",
-            ((*cpu->regs.F & UGB_REG_F_Z_MSK) ? 'Z' : '_'),
-            ((*cpu->regs.F & UGB_REG_F_N_MSK) ? 'N' : '_'),
-            ((*cpu->regs.F & UGB_REG_F_H_MSK) ? 'H' : '_'),
-            ((*cpu->regs.F & UGB_REG_F_C_MSK) ? 'C' : '_'));*/
+            ((*gbm->cpu->regs.F & UGB_REG_F_Z_MSK) ? 'Z' : '_'),
+            ((*gbm->cpu->regs.F & UGB_REG_F_N_MSK) ? 'N' : '_'),
+            ((*gbm->cpu->regs.F & UGB_REG_F_H_MSK) ? 'H' : '_'),
+            ((*gbm->cpu->regs.F & UGB_REG_F_C_MSK) ? 'C' : '_'));
     }
 
     /***************/

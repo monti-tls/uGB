@@ -17,8 +17,8 @@ typedef struct ugb_opcode
     int(*microcode)(struct ugb_cpu*, uint8_t[]);
 } ugb_opcode;
 
-extern ugb_opcode ugb_opcodes_table[0xFF];
-extern ugb_opcode ugb_opcodes_tableCB[0xFF];
+extern ugb_opcode ugb_opcodes_table[];
+extern ugb_opcode ugb_opcodes_tableCB[];
 
 ssize_t ugb_disassemble(char* str, size_t size, uint8_t* code, ssize_t addr);
 

@@ -17,21 +17,21 @@
 DEF_REGW(SP, 0x0)  // Stack Pointer
 DEF_REGW(PC, 0x2)  // Program Counter
 
-DEF_REGB(IE, 0x04) // Interrupts Enable Register
+DEF_REGB(IE, 0x4)  // Interrupts Enable Register
 
-DEF_REGW(AF, 0xA)  // Accumulator | Flags
-DEF_REGW(BC, 0xC)  // General Purpose B | C
-DEF_REGW(DE, 0xE)  // General Purpose D | E
-DEF_REGW(HL, 0x10) // General Purpose H | L
+DEF_REGW(AF, 0xA)  // Flags | Accumulator
+DEF_REGW(BC, 0xC)  // General Purpose C | B
+DEF_REGW(DE, 0xE)  // General Purpose E | D
+DEF_REGW(HL, 0x10) // General Purpose L | H
 
-DEF_REGB(A,  0xA)  // Accumulator
-DEF_REGB(F,  0xB)  // Flags
-DEF_REGB(B,  0xC)  // General Purpose B
-DEF_REGB(C,  0xD)  // General Purpose C
-DEF_REGB(D,  0xE)  // General Purpose D
-DEF_REGB(E,  0xF)  // General Purpose E
-DEF_REGB(H,  0x10) // General Purpose H
-DEF_REGB(L,  0x11) // General Purpose L
+DEF_REGB(F,  0xA)  // Flags
+DEF_REGB(A,  0xB)  // Accumulator
+DEF_REGB(C,  0xC)  // General Purpose C
+DEF_REGB(B,  0xD)  // General Purpose B
+DEF_REGB(E,  0xE)  // General Purpose E
+DEF_REGB(D,  0xF)  // General Purpose D
+DEF_REGB(L,  0x10) // General Purpose L
+DEF_REGB(H,  0x11) // General Purpose H
 
 DEF_REG_MSK(F, Z, 7) // Zero
 DEF_REG_MSK(F, N, 6) // Subtract
