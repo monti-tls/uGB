@@ -64,23 +64,13 @@ int main(int argc, char** argv)
     char dis_buf[128];
     while (*gbm->cpu->regs.PC <= rom->high_addr)
     {
-        if ((err = ugb_disassemble(&dis_buf[0], sizeof(dis_buf), &rom_data[*gbm->cpu->regs.PC], *gbm->cpu->regs.PC)) >= 0)
+        ugb_disassemble(&dis_buf[0], sizeof(dis_buf), &rom_data[*gbm->cpu->regs.PC], *gbm->cpu->regs.PC);
+        printf("[%04X] %s\n", *gbm->cpu->regs.PC, &dis_buf[0]);
+
+        if ((err = ugb_cpu_step(gbm->cpu)) < 0)
         {
-            printf("[%04X] %s\n", *gbm->cpu->regs.PC, &dis_buf[0]);
-            *gbm->cpu->regs.PC += err;
-        }
-        else
-        {
-            if (err == UGB_ERR_BADOP)
-            {
-                printf("[%04X] <bad opcode>\n", *gbm->cpu->regs.PC);
-                ++*gbm->cpu->regs.PC;
-            }
-            else
-            {
-                printf("[%04X] <error: %s>\n", *gbm->cpu->regs.PC, ugb_strerror(err));
-                break;
-            }
+            printf("[%04X] <error: %s>\n", *gbm->cpu->regs.PC, ugb_strerror(err));
+            break;
         }
 
         /*printf(" A = %02X, B = %02X, 0x%02X, ", *cpu->regs.A, *cpu->regs.B, *cpu->regs.C);

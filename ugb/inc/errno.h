@@ -7,6 +7,6 @@ enum
     #include "errno.def"
 };
 
-const char* ugb_strerror(int errno);
+const char* ugb_strerror(int err);
 
 #endif // __UGB_ERRNO_H__

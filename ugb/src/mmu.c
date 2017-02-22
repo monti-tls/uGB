@@ -119,7 +119,7 @@ int ugb_mmu_read(ugb_mmu* mmu, uint16_t addr, uint8_t* data)
 
 int ugb_mmu_write(ugb_mmu* mmu, uint16_t addr, uint8_t data)
 {
-    if (!mmu || !data)
+    if (!mmu)
         return UGB_ERR_BADARGS;
 
     ugb_mmu_map* map = ugb_mmu_resolve_map(mmu, addr);

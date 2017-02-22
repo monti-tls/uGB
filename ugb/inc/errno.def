@@ -11,6 +11,6 @@ DEF_ERRNO(-5, MMU_RO,    "Writing to read-only memory")
 DEF_ERRNO(-6, MMU_CLASH, "Conflicting MMU maps")
 DEF_ERRNO(-7, BADOP,     "Bad / unimplemented opcode")
 
-DEF_ERRNO(-7, NERRNO,  0)
+DEF_ERRNO(-8, NERRNO, 0)
 
 #undef DEF_ERRNO

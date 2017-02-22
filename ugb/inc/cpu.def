@@ -14,24 +14,24 @@
 #define DEF_REG_MSK(reg, name, bit)
 #endif
 
-DEF_REGW(SP, 0x0)    // Stack Pointer
-DEF_REGW(PC, 0x2)    // Program Counter
+DEF_REGW(SP, 0x0)  // Stack Pointer
+DEF_REGW(PC, 0x2)  // Program Counter
 
-DEF_REGB(IMR, 0x04)  // Interrupt Mask Register
+DEF_REGB(IE, 0x04) // Interrupts Enable Register
 
-DEF_REGW(AF, 0xA)    // Accumulator | Flags
-DEF_REGW(BC, 0xC)    // General Purpose B | C
-DEF_REGW(DE, 0xE)    // General Purpose D | E
-DEF_REGW(HL, 0x10)   // General Purpose H | L
+DEF_REGW(AF, 0xA)  // Accumulator | Flags
+DEF_REGW(BC, 0xC)  // General Purpose B | C
+DEF_REGW(DE, 0xE)  // General Purpose D | E
+DEF_REGW(HL, 0x10) // General Purpose H | L
 
-DEF_REGB(A,  0xA)    // Accumulator
-DEF_REGB(F,  0xB)    // Flags
-DEF_REGB(B,  0xC)    // General Purpose B
-DEF_REGB(C,  0xD)    // General Purpose C
-DEF_REGB(D,  0xE)    // General Purpose D
-DEF_REGB(E,  0xF)    // General Purpose E
-DEF_REGB(H,  0x10)   // General Purpose H
-DEF_REGB(L,  0x11)   // General Purpose L
+DEF_REGB(A,  0xA)  // Accumulator
+DEF_REGB(F,  0xB)  // Flags
+DEF_REGB(B,  0xC)  // General Purpose B
+DEF_REGB(C,  0xD)  // General Purpose C
+DEF_REGB(D,  0xE)  // General Purpose D
+DEF_REGB(E,  0xF)  // General Purpose E
+DEF_REGB(H,  0x10) // General Purpose H
+DEF_REGB(L,  0x11) // General Purpose L
 
 DEF_REG_MSK(F, Z, 7) // Zero
 DEF_REG_MSK(F, N, 6) // Subtract

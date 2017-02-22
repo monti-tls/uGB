@@ -55,17 +55,41 @@ ssize_t ugb_cpu_step(ugb_cpu* cpu)
     if ((err = ugb_mmu_read(cpu->gbm->mmu, *cpu->regs.PC, &op)) != UGB_ERR_OK)
         return err;
 
-    // Resolve the instruction
-    ugb_opcode* opcode = &ugb_opcodes_table[op];
-    if (!opcode->microcode)
-        return UGB_ERR_BADOP;
-
-    // Get immediate operands if applicable
+    ugb_opcode* opcode = 0;
     uint8_t imm[4];
-    for (int i = 0; i < opcode->size - 1; ++i)
+
+    if (op == 0xCB)
     {
-        if ((err = ugb_mmu_read(cpu->gbm->mmu, *cpu->regs.PC + 1 + i, &imm[i])) != UGB_ERR_OK)
+        if ((err = ugb_mmu_read(cpu->gbm->mmu, *cpu->regs.PC + 1, &op)) != UGB_ERR_OK)
             return err;
+
+        // Resolve the instruction
+        opcode = &ugb_opcodes_tableCB[op];
+        if (!opcode->microcode)
+            return UGB_ERR_BADOP;
+
+        // Get immediate operands if applicable
+        uint8_t imm[4];
+        for (int i = 0; i < opcode->size - 2; ++i)
+        {
+            if ((err = ugb_mmu_read(cpu->gbm->mmu, *cpu->regs.PC + 2 + i, &imm[i])) != UGB_ERR_OK)
+                return err;
+        }
+    }
+    else
+    {
+        // Resolve the instruction
+        opcode = &ugb_opcodes_table[op];
+        if (!opcode->microcode)
+            return UGB_ERR_BADOP;
+
+        // Get immediate operands if applicable
+        uint8_t imm[4];
+        for (int i = 0; i < opcode->size - 1; ++i)
+        {
+            if ((err = ugb_mmu_read(cpu->gbm->mmu, *cpu->regs.PC + 1 + i, &imm[i])) != UGB_ERR_OK)
+                return err;
+        }
     }
 
     // Advance PC

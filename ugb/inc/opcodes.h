@@ -18,6 +18,7 @@ typedef struct ugb_opcode
 } ugb_opcode;
 
 extern ugb_opcode ugb_opcodes_table[0xFF];
+extern ugb_opcode ugb_opcodes_tableCB[0xFF];
 
 ssize_t ugb_disassemble(char* str, size_t size, uint8_t* code, ssize_t addr);
 

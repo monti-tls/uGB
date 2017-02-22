@@ -16,7 +16,13 @@ ssize_t ugb_disassemble(char* str, size_t size, uint8_t* code, ssize_t addr)
     if (!code)
         return UGB_ERR_BADARGS;
 
-    ugb_opcode* opcode = &ugb_opcodes_table[code[0]];
+    ugb_opcode* opcode = 0;
+
+    if (code[0] == 0xCB)
+        opcode = &ugb_opcodes_tableCB[code[1]];
+    else
+        opcode = &ugb_opcodes_table[code[0]];
+
     if (!opcode->microcode)
         return UGB_ERR_BADOP;
 
@@ -37,7 +43,7 @@ ssize_t ugb_disassemble(char* str, size_t size, uint8_t* code, ssize_t addr)
             }
             else if (!strncmp("r8", s, 2))
             {
-                str_pos += snprintf(str + str_pos, size - str_pos, "PC%+d", *((int8_t*) &code[1]));
+                str_pos += snprintf(str + str_pos, size - str_pos, "%+d", *((int8_t*) &code[1]));
                 if (addr >= 0)
                     str_pos += snprintf(str + str_pos, size - str_pos, " = %04X", (uint16_t) addr + opcode->size + *((int8_t*) &code[1]));
                 s += 2;
@@ -64,6 +70,7 @@ ssize_t ugb_disassemble(char* str, size_t size, uint8_t* code, ssize_t addr)
 /*************************************/
 
 ugb_opcode ugb_opcodes_table[0xFF];
+ugb_opcode ugb_opcodes_tableCB[0xFF];
 
 #define DEF_OPCODE(prefix, opcode, ...) extern int _ugb_opcode ## prefix ## opcode(ugb_cpu*, uint8_t[]);
 #include "opcodes.def"
@@ -91,7 +98,7 @@ static void __attribute__((constructor)) _ugb_opcodes_init()
 #define PC  *cpu->regs.PC
 #define PCl ((uint8_t*) &PC)[0]
 #define PCh ((uint8_t*) &PC)[1]
-#define IMR *cpu->regs.IMR
+#define IE  *cpu->regs.IE
 #define AF  *cpu->regs.AF
 #define AFl ((uint8_t*) &AF)[0]
 #define AFh ((uint8_t*) &AF)[1]
@@ -121,14 +128,22 @@ static void __attribute__((constructor)) _ugb_opcodes_init()
 #define a16 *((uint16_t*) &imm[0])
 
 // Memory read
-#define r(addr, data) (ugb_mmu_read(cpu->gbm->mmu, (addr), (data)))
+#define r(addr, data) do { if ((err = ugb_mmu_read(cpu->gbm->mmu, (addr), (data))) < 0) return err; } while (0);
 // Memory write
-#define w(addr, data) (ugb_mmu_write(cpu->gbm->mmu, (addr), (data)))
+#define w(addr, data) do { if ((err = ugb_mmu_write(cpu->gbm->mmu, (addr), (data))) < 0) return err; } while (0);
 
 // Rotate left x
 #define rol8(x) ((x) >> 7) | ((x) << 1)
 // Rotate right x
 #define ror8(x) ((x) << 7) | ((x) >> 1)
+// Shift left x, bit 0 is 0
+#define sl8(x) (((x) << 1) & ~0x01)
+// Shift right x, copy bit 7
+#define sr8c(x) (((x) >> 1) | ((x) & 0x80))
+// Shift right, bit 7 is 0
+#define sr8(x) (((x) >> 1) & ~0x01)
+// Swap nibbles
+#define swap(x) ((((x) >> 4) & 0xF) | (((x) << 4) & 0xF0))
 
 // Set F.Z flag if x is zero
 #define _Z(x) do { uint16_t x_ = (x); if (!x_) F |= UGB_REG_F_Z_MSK; } while (0);
@@ -174,6 +189,7 @@ static void _ugb_opcode_update_flags(ugb_cpu* cpu, char flags[])
 #define DEF_OPCODE(prefix, opcode, size, cycles, flags, mnemonic, microcode)\
 int _ugb_opcode ## prefix ## opcode(ugb_cpu* cpu, uint8_t imm[]) \
 { \
+    int __attribute__((unused)) err = 0; \
     uint8_t __attribute__((unused)) t8 = 0; \
     uint16_t __attribute__((unused)) t16 = 0; \
     microcode; \
@@ -195,6 +211,10 @@ int _ugb_opcode ## prefix ## opcode(ugb_cpu* cpu, uint8_t imm[]) \
 #undef _H11
 #undef _H3
 #undef _Z
+#undef swap
+#undef sr8
+#undef sr8c
+#undef sl8
 #undef ror16
 #undef rol16
 #undef w
@@ -216,7 +236,7 @@ int _ugb_opcode ## prefix ## opcode(ugb_cpu* cpu, uint8_t imm[]) \
 #undef DE
 #undef DC
 #undef AF
-#undef IMR
+#undef IE
 #undef PCh
 #undef PCl
 #undef PC
