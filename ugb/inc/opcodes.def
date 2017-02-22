@@ -17,7 +17,7 @@ DEF_OPCODE(, 03, 1, 8,  "____", "INC BC",       ++BC;                         )
 DEF_OPCODE(, 04, 1, 4,  "Z0H_", "INC B",        _H3(B, ++B); _Z(B);           )
 DEF_OPCODE(, 05, 1, 4,  "Z1H_", "DEC B",        _H3(B, --B); _Z(B);           )
 DEF_OPCODE(, 06, 2, 8,  "____", "LD B, d8",     B = d8;                       )
-DEF_OPCODE(, 07, 1, 4,  "000C", "RLCA",         _Cs(A & 0x80); A = rol8(A);   )
+DEF_OPCODE(, 07, 1, 4,  "000C", "RLCA",         _Ca(A & 0x80); A = rol8(A);   )
 DEF_OPCODE(, 08, 3, 20, "____", "LD (a16), SP", w(a16, SPl); w(a16+1, SPh);   )
 DEF_OPCODE(, 09, 1, 8,  "_0HC", "ADD HL, BC",   _C15H11(HL, HL = HL + BC);    )
 DEF_OPCODE(, 0A, 1, 8,  "____", "LD A, (BC)",   r(BC, &A);                    )
@@ -25,7 +25,7 @@ DEF_OPCODE(, 0B, 1, 8,  "____", "DEC BC",       --BC;                         )
 DEF_OPCODE(, 0C, 1, 4,  "Z0H_", "INC C",        _H3(C, ++C); _Z(C);           )
 DEF_OPCODE(, 0D, 1, 4,  "Z1H_", "DEC C",        _H3(C, --C); _Z(C);           )
 DEF_OPCODE(, 0E, 2, 8,  "____", "LD C, d8",     C = d8;                       )
-DEF_OPCODE(, 0F, 1, 4,  "000C", "RRCA",         _Cs(A & 0x01); A = ror8(A);   )
+DEF_OPCODE(, 0F, 1, 4,  "000C", "RRCA",         _Ca(A & 0x01); A = ror8(A);   )
 
 DEF_OPCODE(, 10, 2, 4,  "____", "STOP 0",       TODO;                         )
 DEF_OPCODE(, 11, 3, 12, "____", "LD DE, d16",   DE = d16;                     )
@@ -34,7 +34,7 @@ DEF_OPCODE(, 13, 1, 8,  "____", "INC DE",       ++DE;                         )
 DEF_OPCODE(, 14, 1, 4,  "Z0H_", "INC D",        _H3(D, ++D); _Z(D);           )
 DEF_OPCODE(, 15, 1, 4,  "Z1H_", "DEC D",        _H3(D, --D); _Z(D);           )
 DEF_OPCODE(, 16, 2, 8,  "____", "LD D, d8",     D = d8;                       )
-DEF_OPCODE(, 17, 1, 4,  "000C", "RLA",          t8 = _fC; _Cs(A & 0x80); \
+DEF_OPCODE(, 17, 1, 4,  "000C", "RLA",          t8 = _fC; _Ca(A & 0x80); \
                                                 A = (A << 1) | t8;            )
 DEF_OPCODE(, 18, 2, 12, "____", "JR PCr8",      PC += r8;                     )
 DEF_OPCODE(, 19, 1, 8,  "_0HC", "ADD HL, DE",   _C15H11(HL, HL = HL + DE);    )
@@ -43,10 +43,10 @@ DEF_OPCODE(, 1B, 1, 8,  "____", "DEC DE",       --DE;                         )
 DEF_OPCODE(, 1C, 1, 4,  "Z0H_", "INC E",        _H3(E, ++E); _Z(E);           )
 DEF_OPCODE(, 1D, 1, 4,  "Z1H_", "DEC E",        _H3(E, --E); _Z(E);           )
 DEF_OPCODE(, 1E, 2, 8,  "____", "LD E, PCd8",   E = d8;                       )
-DEF_OPCODE(, 1F, 1, 4,  "000C", "RRA",          t8 = _fC; _Cs(A & 0x01); \
+DEF_OPCODE(, 1F, 1, 4,  "000C", "RRA",          t8 = _fC; _Ca(A & 0x01); \
                                                 A = (A >> 1) | (t8 << 7);     )
 
-DEF_OPCODE(, 20, 2, 8,  "____", "JR NZ, PCr8",  _NIF(_fZ, PC += r8;, 4);      )
+DEF_OPCODE(, 20, 2, 8,  "____", "JR NZ, PCr8",  _IF(!_fZ, PC += r8;, 4);      )
 DEF_OPCODE(, 21, 3, 12, "____", "LD HL, d16",   HL = d16;                     )
 DEF_OPCODE(, 22, 1, 8,  "____", "LD (HL+), A",  w(HL++, A);                   )
 DEF_OPCODE(, 23, 1, 8,  "____", "INC HL",       ++HL;                         )
@@ -63,7 +63,7 @@ DEF_OPCODE(, 2D, 1, 4,  "Z1H_", "DEC L",        _H3(L, --L); _Z(L);           )
 DEF_OPCODE(, 2E, 2, 8,  "____", "LD L, d8",     L = d8;                       )
 DEF_OPCODE(, 2F, 1, 4,  "_11_", "CPL",          A = ~A;                       )
 
-DEF_OPCODE(, 30, 2, 8,  "____", "JR NC, PCr8",  _NIF(_fC, PC += r8;, 4);      )
+DEF_OPCODE(, 30, 2, 8,  "____", "JR NC, PCr8",  _IF(!_fC, PC += r8;, 4);      )
 DEF_OPCODE(, 31, 3, 12, "____", "LD SP, d16",   SP = d16;                     )
 DEF_OPCODE(, 32, 1, 8,  "____", "LD (HL-), A",  w(HL--, A);                   )
 DEF_OPCODE(, 33, 1, 8,  "____", "INC SP",       ++SP;                         )
@@ -80,7 +80,7 @@ DEF_OPCODE(, 3B, 1, 8,  "____", "DEC SP",       --SP;                         )
 DEF_OPCODE(, 3C, 1, 4,  "Z0H_", "INC A",        _H3(A, ++A); _Z(A);           )
 DEF_OPCODE(, 3D, 1, 4,  "Z1H_", "DEC A",        _H3(A, --A); _Z(A);           )
 DEF_OPCODE(, 3E, 2, 8,  "____", "LD A, d8",     A = d8;                       )
-DEF_OPCODE(, 3F, 1, 4,  "_00C", "CCF",          _Cs(!_fC);                    )
+DEF_OPCODE(, 3F, 1, 4,  "_00C", "CCF",          _Ca(!_fC);                    )
 
 DEF_OPCODE(, 40, 1, 4,  "____", "LD B, B",      B = B;                        )
 DEF_OPCODE(, 41, 1, 4,  "____", "LD B, C",      B = C;                        )
@@ -228,11 +228,11 @@ DEF_OPCODE(, BF, 1, 4,  "Z1HC", "CP A",         _ZC15H11(A, A - A);             
 #define _PUSH(nn) w(SP-1, nn ## h); w(SP-2, nn ## l); SP -= 2;
 #define _CALL(addr) _PUSH(PC); PC = addr;
 
-DEF_OPCODE(, C0, 1, 8,  "____", "RET NZ",       _NIF(_fZ, _POP(PC), 12);           )
+DEF_OPCODE(, C0, 1, 8,  "____", "RET NZ",       _IF(!_fZ, _POP(PC), 12);           )
 DEF_OPCODE(, C1, 1, 12, "____", "POP BC",       _POP(BC);                          )
-DEF_OPCODE(, C2, 3, 12, "____", "JP NZ, a16",   _NIF(_fZ, PC = a16;, 4);           )
+DEF_OPCODE(, C2, 3, 12, "____", "JP NZ, a16",   _IF(!_fZ, PC = a16;, 4);           )
 DEF_OPCODE(, C3, 3, 16, "____", "JP a16",       PC = a16;                          )
-DEF_OPCODE(, C4, 3, 12, "____", "CALL NZ, a16", _NIF(_fZ, _CALL(a16), 12);         )
+DEF_OPCODE(, C4, 3, 12, "____", "CALL NZ, a16", _IF(!_fZ, _CALL(a16), 12);         )
 DEF_OPCODE(, C5, 1, 16, "____", "PUSH BC",      _PUSH(BC);                         )
 DEF_OPCODE(, C6, 2, 8,  "Z0HC", "ADD A, d8",    _ADD(d8);                          )
 DEF_OPCODE(, C7, 1, 16, "____", "RST 00",       _CALL(0x00);                       )
@@ -245,11 +245,11 @@ DEF_OPCODE(, CD, 3, 24, "____", "CALL a16",     _CALL(a16);                     
 DEF_OPCODE(, CE, 2, 8,  "Z0HC", "ADC A, d8",    _ADC(d8);                          )
 DEF_OPCODE(, CF, 1, 16, "____", "RST 08",       _CALL(0x08);                       )
 
-DEF_OPCODE(, D0, 1, 8,  "____", "RET NC",       _NIF(_fC, _POP(PC), 12);           )
+DEF_OPCODE(, D0, 1, 8,  "____", "RET NC",       _IF(!_fC, _POP(PC), 12);           )
 DEF_OPCODE(, D1, 1, 12, "____", "POP DE",       _POP(DE);                          )
-DEF_OPCODE(, D2, 3, 12, "____", "JP NC, a16",   _NIF(_fC, PC = a16, 4);            )
+DEF_OPCODE(, D2, 3, 12, "____", "JP NC, a16",   _IF(!_fC, PC = a16, 4);            )
 // DEF_OPCODE(, D3) invalid
-DEF_OPCODE(, D4, 3, 12, "____", "CALL NC, a16", _NIF(_fC, _CALL(a16), 12);         )
+DEF_OPCODE(, D4, 3, 12, "____", "CALL NC, a16", _IF(!_fC, _CALL(a16), 12);         )
 DEF_OPCODE(, D5, 1, 16, "____", "PUSH DE",      _PUSH(DE);                         )
 DEF_OPCODE(, D6, 2, 8,  "Z1HC", "SUB d8",       _SUB(d8);                          )
 DEF_OPCODE(, D7, 1, 16, "____", "RST 10",       _CALL(0x10);                       )
@@ -296,71 +296,71 @@ DEF_OPCODE(, FB, 1, 4,  "____", "EI",           IE = 1;                         
 DEF_OPCODE(, FE, 2, 8,  "Z1HC", "CP d8",        _ZC15H11(A, A - d8);               )
 DEF_OPCODE(, FF, 1, 16, "____", "RST 38",       _CALL(0x38);                       )
 
-DEF_OPCODE(CB, 00, 2, 8,  "Z00C", "RLC B",      _Cs(B & 0x80); B = rol8(B); _Z(B); )
-DEF_OPCODE(CB, 01, 2, 8,  "Z00C", "RLC C",      _Cs(C & 0x80); C = rol8(C); _Z(C); )
-DEF_OPCODE(CB, 02, 2, 8,  "Z00C", "RLC D",      _Cs(D & 0x80); D = rol8(D); _Z(D); )
-DEF_OPCODE(CB, 03, 2, 8,  "Z00C", "RLC E",      _Cs(E & 0x80); E = rol8(E); _Z(E); )
-DEF_OPCODE(CB, 04, 2, 8,  "Z00C", "RLC H",      _Cs(H & 0x80); H = rol8(H); _Z(H); )
-DEF_OPCODE(CB, 05, 2, 8,  "Z00C", "RLC L",      _Cs(L & 0x80); L = rol8(L); _Z(L); )
-DEF_OPCODE(CB, 06, 2, 16, "Z00C", "RLC (HL)",   r(HL, &t8); _Cs(t8 & 0x80); \
+DEF_OPCODE(CB, 00, 2, 8,  "Z00C", "RLC B",      _Ca(B & 0x80); B = rol8(B); _Z(B); )
+DEF_OPCODE(CB, 01, 2, 8,  "Z00C", "RLC C",      _Ca(C & 0x80); C = rol8(C); _Z(C); )
+DEF_OPCODE(CB, 02, 2, 8,  "Z00C", "RLC D",      _Ca(D & 0x80); D = rol8(D); _Z(D); )
+DEF_OPCODE(CB, 03, 2, 8,  "Z00C", "RLC E",      _Ca(E & 0x80); E = rol8(E); _Z(E); )
+DEF_OPCODE(CB, 04, 2, 8,  "Z00C", "RLC H",      _Ca(H & 0x80); H = rol8(H); _Z(H); )
+DEF_OPCODE(CB, 05, 2, 8,  "Z00C", "RLC L",      _Ca(L & 0x80); L = rol8(L); _Z(L); )
+DEF_OPCODE(CB, 06, 2, 16, "Z00C", "RLC (HL)",   r(HL, &t8); _Ca(t8 & 0x80); \
                                                 t8 = rol8(t8); w(HL, t8); _Z(t8);  )
-DEF_OPCODE(CB, 07, 2, 8,  "Z00C", "RLC A",      _Cs(A & 0x80); A = rol8(A); _Z(A); )
-DEF_OPCODE(CB, 08, 2, 8,  "Z00C", "RRC B",      _Cs(B & 0x01); B = ror8(B); _Z(B); )
-DEF_OPCODE(CB, 09, 2, 8,  "Z00C", "RRC C",      _Cs(C & 0x01); C = ror8(C); _Z(C); )
-DEF_OPCODE(CB, 0A, 2, 8,  "Z00C", "RRC D",      _Cs(D & 0x01); D = ror8(D); _Z(D); )
-DEF_OPCODE(CB, 0B, 2, 8,  "Z00C", "RRC E",      _Cs(E & 0x01); E = ror8(E); _Z(E); )
-DEF_OPCODE(CB, 0C, 2, 8,  "Z00C", "RRC H",      _Cs(H & 0x01); H = ror8(H); _Z(H); )
-DEF_OPCODE(CB, 0D, 2, 8,  "Z00C", "RRC L",      _Cs(L & 0x01); L = ror8(L); _Z(L); )
-DEF_OPCODE(CB, 0E, 2, 16, "Z00C", "RRC (HL)",   r(HL, &t8); _Cs(t8 & 0x01); \
+DEF_OPCODE(CB, 07, 2, 8,  "Z00C", "RLC A",      _Ca(A & 0x80); A = rol8(A); _Z(A); )
+DEF_OPCODE(CB, 08, 2, 8,  "Z00C", "RRC B",      _Ca(B & 0x01); B = ror8(B); _Z(B); )
+DEF_OPCODE(CB, 09, 2, 8,  "Z00C", "RRC C",      _Ca(C & 0x01); C = ror8(C); _Z(C); )
+DEF_OPCODE(CB, 0A, 2, 8,  "Z00C", "RRC D",      _Ca(D & 0x01); D = ror8(D); _Z(D); )
+DEF_OPCODE(CB, 0B, 2, 8,  "Z00C", "RRC E",      _Ca(E & 0x01); E = ror8(E); _Z(E); )
+DEF_OPCODE(CB, 0C, 2, 8,  "Z00C", "RRC H",      _Ca(H & 0x01); H = ror8(H); _Z(H); )
+DEF_OPCODE(CB, 0D, 2, 8,  "Z00C", "RRC L",      _Ca(L & 0x01); L = ror8(L); _Z(L); )
+DEF_OPCODE(CB, 0E, 2, 16, "Z00C", "RRC (HL)",   r(HL, &t8); _Ca(t8 & 0x01); \
                                                 t8 = ror8(t8); w(HL, t8); _Z(t8);  )
-DEF_OPCODE(CB, 0F, 2, 8,  "Z00C", "RRC A",      _Cs(A & 0x01); A = ror8(A); _Z(A); )
+DEF_OPCODE(CB, 0F, 2, 8,  "Z00C", "RRC A",      _Ca(A & 0x01); A = ror8(A); _Z(A); )
 
-DEF_OPCODE(CB, 10, 2, 8,  "Z00C", "RL B",       t8 = _fC; _Cs(B & 0x80); \
+DEF_OPCODE(CB, 10, 2, 8,  "Z00C", "RL B",       t8 = _fC; _Ca(B & 0x80); \
                                                 B = rol8(B) | t8; _Z(B);           )
-DEF_OPCODE(CB, 11, 2, 8,  "Z00C", "RL C",       t8 = _fC; _Cs(C & 0x80); \
+DEF_OPCODE(CB, 11, 2, 8,  "Z00C", "RL C",       t8 = _fC; _Ca(C & 0x80); \
                                                 C = rol8(C) | t8; _Z(C);           )
-DEF_OPCODE(CB, 12, 2, 8,  "Z00C", "RL D",       t8 = _fC; _Cs(D & 0x80); \
+DEF_OPCODE(CB, 12, 2, 8,  "Z00C", "RL D",       t8 = _fC; _Ca(D & 0x80); \
                                                 D = rol8(D) | t8; _Z(D);           )
-DEF_OPCODE(CB, 13, 2, 8,  "Z00C", "RL E",       t8 = _fC; _Cs(E & 0x80); \
+DEF_OPCODE(CB, 13, 2, 8,  "Z00C", "RL E",       t8 = _fC; _Ca(E & 0x80); \
                                                 E = rol8(E) | t8; _Z(E);           )
-DEF_OPCODE(CB, 14, 2, 8,  "Z00C", "RL H",       t8 = _fC; _Cs(H & 0x80); \
+DEF_OPCODE(CB, 14, 2, 8,  "Z00C", "RL H",       t8 = _fC; _Ca(H & 0x80); \
                                                 H = rol8(H) | t8; _Z(H);           )
-DEF_OPCODE(CB, 15, 2, 8,  "Z00C", "RL L",       t8 = _fC; _Cs(L & 0x80); \
+DEF_OPCODE(CB, 15, 2, 8,  "Z00C", "RL L",       t8 = _fC; _Ca(L & 0x80); \
                                                 L = rol8(L) | t8; _Z(L);           )
 DEF_OPCODE(CB, 16, 2, 16, "Z00C", "RL (HL)",    t16 = _fC; r(HL, &t8); \
-                                                _Cs(t8 & 0x80); \
+                                                _Ca(t8 & 0x80); \
                                                 t8 = rol8(t8) | t16; _Z(t8); \
                                                 w(HL, t8);                         )
-DEF_OPCODE(CB, 17, 2, 8,  "Z00C", "RL A",       t8 = _fC; _Cs(A & 0x80); \
+DEF_OPCODE(CB, 17, 2, 8,  "Z00C", "RL A",       t8 = _fC; _Ca(A & 0x80); \
                                                 A = rol8(A) | t8; _Z(A);           )
-DEF_OPCODE(CB, 18, 2, 8,  "Z00C", "RR B",       t8 = _fC; _Cs(B & 0x01); \
+DEF_OPCODE(CB, 18, 2, 8,  "Z00C", "RR B",       t8 = _fC; _Ca(B & 0x01); \
                                                 B = ror8(B) | t8; _Z(B);           )
-DEF_OPCODE(CB, 19, 2, 8,  "Z00C", "RR C",       t8 = _fC; _Cs(C & 0x01); \
+DEF_OPCODE(CB, 19, 2, 8,  "Z00C", "RR C",       t8 = _fC; _Ca(C & 0x01); \
                                                 C = ror8(C) | t8; _Z(C);           )
-DEF_OPCODE(CB, 1A, 2, 8,  "Z00C", "RR D",       t8 = _fC; _Cs(D & 0x01); \
+DEF_OPCODE(CB, 1A, 2, 8,  "Z00C", "RR D",       t8 = _fC; _Ca(D & 0x01); \
                                                 D = ror8(D) | t8; _Z(D);           )
-DEF_OPCODE(CB, 1B, 2, 8,  "Z00C", "RR E",       t8 = _fC; _Cs(E & 0x01); \
+DEF_OPCODE(CB, 1B, 2, 8,  "Z00C", "RR E",       t8 = _fC; _Ca(E & 0x01); \
                                                 E = ror8(E) | t8; _Z(E);           )
-DEF_OPCODE(CB, 1C, 2, 8,  "Z00C", "RR H",       t8 = _fC; _Cs(H & 0x01); \
+DEF_OPCODE(CB, 1C, 2, 8,  "Z00C", "RR H",       t8 = _fC; _Ca(H & 0x01); \
                                                 H = ror8(H) | t8; _Z(H);           )
-DEF_OPCODE(CB, 1D, 2, 8,  "Z00C", "RR L",       t8 = _fC; _Cs(L & 0x01); \
+DEF_OPCODE(CB, 1D, 2, 8,  "Z00C", "RR L",       t8 = _fC; _Ca(L & 0x01); \
                                                 L = ror8(L) | t8; _Z(L);           )
 DEF_OPCODE(CB, 1E, 2, 16, "Z00C", "RR (HL)",    t16 = _fC; r(HL, &t8); \
-                                                _Cs(t8 & 0x01); \
+                                                _Ca(t8 & 0x01); \
                                                 t8 = ror8(t8) | t16; _Z(t8); \
                                                 w(HL, t8);                         )
-DEF_OPCODE(CB, 1F, 2, 8,  "Z00C", "RR A",       t8 = _fC; _Cs(A & 0x01); \
+DEF_OPCODE(CB, 1F, 2, 8,  "Z00C", "RR A",       t8 = _fC; _Ca(A & 0x01); \
                                                 A = ror8(A) | t8; _Z(A);           )
 
-DEF_OPCODE(CB, 20, 2, 8,  "Z00C", "SLA B",      _Cs(B & 0x80); B = sl8(B); _Z(B);  )
-DEF_OPCODE(CB, 21, 2, 8,  "Z00C", "SLA C",      _Cs(C & 0x80); C = sl8(C); _Z(C);  )
-DEF_OPCODE(CB, 22, 2, 8,  "Z00C", "SLA D",      _Cs(D & 0x80); D = sl8(D); _Z(D);  )
-DEF_OPCODE(CB, 23, 2, 8,  "Z00C", "SLA E",      _Cs(E & 0x80); E = sl8(E); _Z(E);  )
-DEF_OPCODE(CB, 24, 2, 8,  "Z00C", "SLA H",      _Cs(H & 0x80); H = sl8(H); _Z(H);  )
-DEF_OPCODE(CB, 25, 2, 8,  "Z00C", "SLA L",      _Cs(L & 0x80); L = sl8(L); _Z(L);  )
-DEF_OPCODE(CB, 26, 2, 16, "Z00C", "SLA (HL)",   r(HL, &t8); _Cs(t8 & 0x80); \
+DEF_OPCODE(CB, 20, 2, 8,  "Z00C", "SLA B",      _Ca(B & 0x80); B = sl8(B); _Z(B);  )
+DEF_OPCODE(CB, 21, 2, 8,  "Z00C", "SLA C",      _Ca(C & 0x80); C = sl8(C); _Z(C);  )
+DEF_OPCODE(CB, 22, 2, 8,  "Z00C", "SLA D",      _Ca(D & 0x80); D = sl8(D); _Z(D);  )
+DEF_OPCODE(CB, 23, 2, 8,  "Z00C", "SLA E",      _Ca(E & 0x80); E = sl8(E); _Z(E);  )
+DEF_OPCODE(CB, 24, 2, 8,  "Z00C", "SLA H",      _Ca(H & 0x80); H = sl8(H); _Z(H);  )
+DEF_OPCODE(CB, 25, 2, 8,  "Z00C", "SLA L",      _Ca(L & 0x80); L = sl8(L); _Z(L);  )
+DEF_OPCODE(CB, 26, 2, 16, "Z00C", "SLA (HL)",   r(HL, &t8); _Ca(t8 & 0x80); \
                                                 t8 = sl8(t8); _Z(t8); w(HL, t8);   )
-DEF_OPCODE(CB, 27, 2, 8,  "Z00C", "SLA A",      _Cs(A & 0x80); A = sl8(A); _Z(A);  )
+DEF_OPCODE(CB, 27, 2, 8,  "Z00C", "SLA A",      _Ca(A & 0x80); A = sl8(A); _Z(A);  )
 
 DEF_OPCODE(CB, 28, 2, 8,  "Z000", "SRA B",      B = sr8c(B); _Z(B);                )
 DEF_OPCODE(CB, 29, 2, 8,  "Z000", "SRA C",      C = sr8c(C); _Z(C);                )
@@ -381,83 +381,83 @@ DEF_OPCODE(CB, 35, 2, 8,  "Z000", "SWAP L",     L = swap(L); _Z(L);             
 DEF_OPCODE(CB, 36, 2, 16, "Z000", "SWAP (HL)",  r(HL, &t8); t8 = swap(t8); _Z(t8); \
                                                 w(HL, t8);                         )
 DEF_OPCODE(CB, 37, 2, 8,  "Z000", "SWAP A",     A = swap(A); _Z(A);                )
-DEF_OPCODE(CB, 38, 2, 8,  "Z00C", "SRL B",      _Cs(B & 0x01); B = sr8(B); _Z(B);  )
-DEF_OPCODE(CB, 39, 2, 8,  "Z00C", "SRL C",      _Cs(C & 0x01); C = sr8(C); _Z(C);  )
-DEF_OPCODE(CB, 3A, 2, 8,  "Z00C", "SRL D",      _Cs(D & 0x01); D = sr8(D); _Z(D);  )
-DEF_OPCODE(CB, 3B, 2, 8,  "Z00C", "SRL E",      _Cs(E & 0x01); E = sr8(E); _Z(E);  )
-DEF_OPCODE(CB, 3C, 2, 8,  "Z00C", "SRL H",      _Cs(H & 0x01); H = sr8(H); _Z(H);  )
-DEF_OPCODE(CB, 3D, 2, 8,  "Z00C", "SRL L",      _Cs(L & 0x01); L = sr8(L); _Z(L);  )
-DEF_OPCODE(CB, 3E, 2, 16, "Z00C", "SRL (HL)",   r(HL, &t8); _Cs(t8 & 0x01); \
+DEF_OPCODE(CB, 38, 2, 8,  "Z00C", "SRL B",      _Ca(B & 0x01); B = sr8(B); _Z(B);  )
+DEF_OPCODE(CB, 39, 2, 8,  "Z00C", "SRL C",      _Ca(C & 0x01); C = sr8(C); _Z(C);  )
+DEF_OPCODE(CB, 3A, 2, 8,  "Z00C", "SRL D",      _Ca(D & 0x01); D = sr8(D); _Z(D);  )
+DEF_OPCODE(CB, 3B, 2, 8,  "Z00C", "SRL E",      _Ca(E & 0x01); E = sr8(E); _Z(E);  )
+DEF_OPCODE(CB, 3C, 2, 8,  "Z00C", "SRL H",      _Ca(H & 0x01); H = sr8(H); _Z(H);  )
+DEF_OPCODE(CB, 3D, 2, 8,  "Z00C", "SRL L",      _Ca(L & 0x01); L = sr8(L); _Z(L);  )
+DEF_OPCODE(CB, 3E, 2, 16, "Z00C", "SRL (HL)",   r(HL, &t8); _Ca(t8 & 0x01); \
                                                 t8 = sr8(t8); w(HL, t8);           )
-DEF_OPCODE(CB, 3F, 2, 8,  "Z00C", "SRL A",      _Cs(A & 0x01); A = sr8(A); _Z(A);  )
+DEF_OPCODE(CB, 3F, 2, 8,  "Z00C", "SRL A",      _Ca(A & 0x01); A = sr8(A); _Z(A);  )
 
-DEF_OPCODE(CB, 40, 2, 8,  "Z01_", "BIT 0, B",   _Zs(B & (0x1 << 0));               )
-DEF_OPCODE(CB, 41, 2, 8,  "Z01_", "BIT 0, C",   _Zs(C & (0x1 << 0));               )
-DEF_OPCODE(CB, 42, 2, 8,  "Z01_", "BIT 0, D",   _Zs(D & (0x1 << 0));               )
-DEF_OPCODE(CB, 43, 2, 8,  "Z01_", "BIT 0, E",   _Zs(E & (0x1 << 0));               )
-DEF_OPCODE(CB, 44, 2, 8,  "Z01_", "BIT 0, H",   _Zs(H & (0x1 << 0));               )
-DEF_OPCODE(CB, 45, 2, 8,  "Z01_", "BIT 0, L",   _Zs(L & (0x1 << 0));               )
-DEF_OPCODE(CB, 46, 2, 16, "Z01_", "BIT 0, (HL)",r(HL, &t8); _Zs(t8 & (0x1 << 0));  )
-DEF_OPCODE(CB, 47, 2, 8,  "Z01_", "BIT 0, A",   _Zs(A & (0x1 << 0));               )
-DEF_OPCODE(CB, 48, 2, 8,  "Z01_", "BIT 1, B",   _Zs(B & (0x1 << 1));               )
-DEF_OPCODE(CB, 49, 2, 8,  "Z01_", "BIT 1, C",   _Zs(C & (0x1 << 1));               )
-DEF_OPCODE(CB, 4A, 2, 8,  "Z01_", "BIT 1, D",   _Zs(D & (0x1 << 1));               )
-DEF_OPCODE(CB, 4B, 2, 8,  "Z01_", "BIT 1, E",   _Zs(E & (0x1 << 1));               )
-DEF_OPCODE(CB, 4C, 2, 8,  "Z01_", "BIT 1, H",   _Zs(H & (0x1 << 1));               )
-DEF_OPCODE(CB, 4D, 2, 8,  "Z01_", "BIT 1, L",   _Zs(L & (0x1 << 1));               )
-DEF_OPCODE(CB, 4E, 2, 16, "Z01_", "BIT 1, (HL)",r(HL, &t8); _Zs(t8 & (0x1 << 1));  )
-DEF_OPCODE(CB, 4F, 2, 8,  "Z01_", "BIT 1, A",   _Zs(A & (0x1 << 1));               )
+DEF_OPCODE(CB, 40, 2, 8,  "Z01_", "BIT 0, B",   _Za(B & (0x1 << 0));               )
+DEF_OPCODE(CB, 41, 2, 8,  "Z01_", "BIT 0, C",   _Za(C & (0x1 << 0));               )
+DEF_OPCODE(CB, 42, 2, 8,  "Z01_", "BIT 0, D",   _Za(D & (0x1 << 0));               )
+DEF_OPCODE(CB, 43, 2, 8,  "Z01_", "BIT 0, E",   _Za(E & (0x1 << 0));               )
+DEF_OPCODE(CB, 44, 2, 8,  "Z01_", "BIT 0, H",   _Za(H & (0x1 << 0));               )
+DEF_OPCODE(CB, 45, 2, 8,  "Z01_", "BIT 0, L",   _Za(L & (0x1 << 0));               )
+DEF_OPCODE(CB, 46, 2, 16, "Z01_", "BIT 0, (HL)",r(HL, &t8); _Za(t8 & (0x1 << 0));  )
+DEF_OPCODE(CB, 47, 2, 8,  "Z01_", "BIT 0, A",   _Za(A & (0x1 << 0));               )
+DEF_OPCODE(CB, 48, 2, 8,  "Z01_", "BIT 1, B",   _Za(B & (0x1 << 1));               )
+DEF_OPCODE(CB, 49, 2, 8,  "Z01_", "BIT 1, C",   _Za(C & (0x1 << 1));               )
+DEF_OPCODE(CB, 4A, 2, 8,  "Z01_", "BIT 1, D",   _Za(D & (0x1 << 1));               )
+DEF_OPCODE(CB, 4B, 2, 8,  "Z01_", "BIT 1, E",   _Za(E & (0x1 << 1));               )
+DEF_OPCODE(CB, 4C, 2, 8,  "Z01_", "BIT 1, H",   _Za(H & (0x1 << 1));               )
+DEF_OPCODE(CB, 4D, 2, 8,  "Z01_", "BIT 1, L",   _Za(L & (0x1 << 1));               )
+DEF_OPCODE(CB, 4E, 2, 16, "Z01_", "BIT 1, (HL)",r(HL, &t8); _Za(t8 & (0x1 << 1));  )
+DEF_OPCODE(CB, 4F, 2, 8,  "Z01_", "BIT 1, A",   _Za(A & (0x1 << 1));               )
 
-DEF_OPCODE(CB, 50, 2, 8,  "Z01_", "BIT 2, B",   _Zs(B & (0x1 << 2));               )
-DEF_OPCODE(CB, 51, 2, 8,  "Z01_", "BIT 2, C",   _Zs(C & (0x1 << 2));               )
-DEF_OPCODE(CB, 52, 2, 8,  "Z01_", "BIT 2, D",   _Zs(D & (0x1 << 2));               )
-DEF_OPCODE(CB, 53, 2, 8,  "Z01_", "BIT 2, E",   _Zs(E & (0x1 << 2));               )
-DEF_OPCODE(CB, 54, 2, 8,  "Z01_", "BIT 2, H",   _Zs(H & (0x1 << 2));               )
-DEF_OPCODE(CB, 55, 2, 8,  "Z01_", "BIT 2, L",   _Zs(L & (0x1 << 2));               )
-DEF_OPCODE(CB, 56, 2, 16, "Z01_", "BIT 2, (HL)",r(HL, &t8); _Zs(t8 & (0x1 << 2));  )
-DEF_OPCODE(CB, 57, 2, 8,  "Z01_", "BIT 2, A",   _Zs(A & (0x1 << 2));               )
-DEF_OPCODE(CB, 58, 2, 8,  "Z01_", "BIT 3, B",   _Zs(B & (0x1 << 3));               )
-DEF_OPCODE(CB, 59, 2, 8,  "Z01_", "BIT 3, C",   _Zs(C & (0x1 << 3));               )
-DEF_OPCODE(CB, 5A, 2, 8,  "Z01_", "BIT 3, D",   _Zs(D & (0x1 << 3));               )
-DEF_OPCODE(CB, 5B, 2, 8,  "Z01_", "BIT 3, E",   _Zs(E & (0x1 << 3));               )
-DEF_OPCODE(CB, 5C, 2, 8,  "Z01_", "BIT 3, H",   _Zs(H & (0x1 << 3));               )
-DEF_OPCODE(CB, 5D, 2, 8,  "Z01_", "BIT 3, L",   _Zs(L & (0x1 << 3));               )
-DEF_OPCODE(CB, 5E, 2, 16, "Z01_", "BIT 3, (HL)",r(HL, &t8); _Zs(t8 & (0x1 << 3));  )
-DEF_OPCODE(CB, 5F, 2, 8,  "Z01_", "BIT 3, A",   _Zs(A & (0x1 << 3));               )
+DEF_OPCODE(CB, 50, 2, 8,  "Z01_", "BIT 2, B",   _Za(B & (0x1 << 2));               )
+DEF_OPCODE(CB, 51, 2, 8,  "Z01_", "BIT 2, C",   _Za(C & (0x1 << 2));               )
+DEF_OPCODE(CB, 52, 2, 8,  "Z01_", "BIT 2, D",   _Za(D & (0x1 << 2));               )
+DEF_OPCODE(CB, 53, 2, 8,  "Z01_", "BIT 2, E",   _Za(E & (0x1 << 2));               )
+DEF_OPCODE(CB, 54, 2, 8,  "Z01_", "BIT 2, H",   _Za(H & (0x1 << 2));               )
+DEF_OPCODE(CB, 55, 2, 8,  "Z01_", "BIT 2, L",   _Za(L & (0x1 << 2));               )
+DEF_OPCODE(CB, 56, 2, 16, "Z01_", "BIT 2, (HL)",r(HL, &t8); _Za(t8 & (0x1 << 2));  )
+DEF_OPCODE(CB, 57, 2, 8,  "Z01_", "BIT 2, A",   _Za(A & (0x1 << 2));               )
+DEF_OPCODE(CB, 58, 2, 8,  "Z01_", "BIT 3, B",   _Za(B & (0x1 << 3));               )
+DEF_OPCODE(CB, 59, 2, 8,  "Z01_", "BIT 3, C",   _Za(C & (0x1 << 3));               )
+DEF_OPCODE(CB, 5A, 2, 8,  "Z01_", "BIT 3, D",   _Za(D & (0x1 << 3));               )
+DEF_OPCODE(CB, 5B, 2, 8,  "Z01_", "BIT 3, E",   _Za(E & (0x1 << 3));               )
+DEF_OPCODE(CB, 5C, 2, 8,  "Z01_", "BIT 3, H",   _Za(H & (0x1 << 3));               )
+DEF_OPCODE(CB, 5D, 2, 8,  "Z01_", "BIT 3, L",   _Za(L & (0x1 << 3));               )
+DEF_OPCODE(CB, 5E, 2, 16, "Z01_", "BIT 3, (HL)",r(HL, &t8); _Za(t8 & (0x1 << 3));  )
+DEF_OPCODE(CB, 5F, 2, 8,  "Z01_", "BIT 3, A",   _Za(A & (0x1 << 3));               )
 
-DEF_OPCODE(CB, 60, 2, 8,  "Z01_", "BIT 4, B",   _Zs(B & (0x1 << 4));               )
-DEF_OPCODE(CB, 61, 2, 8,  "Z01_", "BIT 4, C",   _Zs(C & (0x1 << 4));               )
-DEF_OPCODE(CB, 62, 2, 8,  "Z01_", "BIT 4, D",   _Zs(D & (0x1 << 4));               )
-DEF_OPCODE(CB, 63, 2, 8,  "Z01_", "BIT 4, E",   _Zs(E & (0x1 << 4));               )
-DEF_OPCODE(CB, 64, 2, 8,  "Z01_", "BIT 4, H",   _Zs(H & (0x1 << 4));               )
-DEF_OPCODE(CB, 65, 2, 8,  "Z01_", "BIT 4, L",   _Zs(L & (0x1 << 4));               )
-DEF_OPCODE(CB, 66, 2, 16, "Z01_", "BIT 4, (HL)",r(HL, &t8); _Zs(t8 & (0x1 << 4));  )
-DEF_OPCODE(CB, 67, 2, 8,  "Z01_", "BIT 4, A",   _Zs(A & (0x1 << 4));               )
-DEF_OPCODE(CB, 68, 2, 8,  "Z01_", "BIT 5, B",   _Zs(B & (0x1 << 5));               )
-DEF_OPCODE(CB, 69, 2, 8,  "Z01_", "BIT 5, C",   _Zs(C & (0x1 << 5));               )
-DEF_OPCODE(CB, 6A, 2, 8,  "Z01_", "BIT 5, D",   _Zs(D & (0x1 << 5));               )
-DEF_OPCODE(CB, 6B, 2, 8,  "Z01_", "BIT 5, E",   _Zs(E & (0x1 << 5));               )
-DEF_OPCODE(CB, 6C, 2, 8,  "Z01_", "BIT 5, H",   _Zs(H & (0x1 << 5));               )
-DEF_OPCODE(CB, 6D, 2, 8,  "Z01_", "BIT 5, L",   _Zs(L & (0x1 << 5));               )
-DEF_OPCODE(CB, 6E, 2, 16, "Z01_", "BIT 5, (HL)",r(HL, &t8); _Zs(t8 & (0x1 << 5));  )
-DEF_OPCODE(CB, 6F, 2, 8,  "Z01_", "BIT 5, A",   _Zs(A & (0x1 << 5));               )
+DEF_OPCODE(CB, 60, 2, 8,  "Z01_", "BIT 4, B",   _Za(B & (0x1 << 4));               )
+DEF_OPCODE(CB, 61, 2, 8,  "Z01_", "BIT 4, C",   _Za(C & (0x1 << 4));               )
+DEF_OPCODE(CB, 62, 2, 8,  "Z01_", "BIT 4, D",   _Za(D & (0x1 << 4));               )
+DEF_OPCODE(CB, 63, 2, 8,  "Z01_", "BIT 4, E",   _Za(E & (0x1 << 4));               )
+DEF_OPCODE(CB, 64, 2, 8,  "Z01_", "BIT 4, H",   _Za(H & (0x1 << 4));               )
+DEF_OPCODE(CB, 65, 2, 8,  "Z01_", "BIT 4, L",   _Za(L & (0x1 << 4));               )
+DEF_OPCODE(CB, 66, 2, 16, "Z01_", "BIT 4, (HL)",r(HL, &t8); _Za(t8 & (0x1 << 4));  )
+DEF_OPCODE(CB, 67, 2, 8,  "Z01_", "BIT 4, A",   _Za(A & (0x1 << 4));               )
+DEF_OPCODE(CB, 68, 2, 8,  "Z01_", "BIT 5, B",   _Za(B & (0x1 << 5));               )
+DEF_OPCODE(CB, 69, 2, 8,  "Z01_", "BIT 5, C",   _Za(C & (0x1 << 5));               )
+DEF_OPCODE(CB, 6A, 2, 8,  "Z01_", "BIT 5, D",   _Za(D & (0x1 << 5));               )
+DEF_OPCODE(CB, 6B, 2, 8,  "Z01_", "BIT 5, E",   _Za(E & (0x1 << 5));               )
+DEF_OPCODE(CB, 6C, 2, 8,  "Z01_", "BIT 5, H",   _Za(H & (0x1 << 5));               )
+DEF_OPCODE(CB, 6D, 2, 8,  "Z01_", "BIT 5, L",   _Za(L & (0x1 << 5));               )
+DEF_OPCODE(CB, 6E, 2, 16, "Z01_", "BIT 5, (HL)",r(HL, &t8); _Za(t8 & (0x1 << 5));  )
+DEF_OPCODE(CB, 6F, 2, 8,  "Z01_", "BIT 5, A",   _Za(A & (0x1 << 5));               )
 
-DEF_OPCODE(CB, 70, 2, 8,  "Z01_", "BIT 6, B",   _Zs(B & (0x1 << 6));               )
-DEF_OPCODE(CB, 71, 2, 8,  "Z01_", "BIT 6, C",   _Zs(C & (0x1 << 6));               )
-DEF_OPCODE(CB, 72, 2, 8,  "Z01_", "BIT 6, D",   _Zs(D & (0x1 << 6));               )
-DEF_OPCODE(CB, 73, 2, 8,  "Z01_", "BIT 6, E",   _Zs(E & (0x1 << 6));               )
-DEF_OPCODE(CB, 74, 2, 8,  "Z01_", "BIT 6, H",   _Zs(H & (0x1 << 6));               )
-DEF_OPCODE(CB, 75, 2, 8,  "Z01_", "BIT 6, L",   _Zs(L & (0x1 << 6));               )
-DEF_OPCODE(CB, 76, 2, 16, "Z01_", "BIT 6, (HL)",r(HL, &t8); _Zs(t8 & (0x1 << 6));  )
-DEF_OPCODE(CB, 77, 2, 8,  "Z01_", "BIT 6, A",   _Zs(A & (0x1 << 6));               )
-DEF_OPCODE(CB, 78, 2, 8,  "Z01_", "BIT 7, B",   _Zs(B & (0x1 << 7));               )
-DEF_OPCODE(CB, 79, 2, 8,  "Z01_", "BIT 7, C",   _Zs(C & (0x1 << 7));               )
-DEF_OPCODE(CB, 7A, 2, 8,  "Z01_", "BIT 7, D",   _Zs(D & (0x1 << 7));               )
-DEF_OPCODE(CB, 7B, 2, 8,  "Z01_", "BIT 7, E",   _Zs(E & (0x1 << 7));               )
-DEF_OPCODE(CB, 7C, 2, 8,  "Z01_", "BIT 7, H",   _Zs(H & (0x1 << 7));               )
-DEF_OPCODE(CB, 7D, 2, 8,  "Z01_", "BIT 7, L",   _Zs(L & (0x1 << 7));               )
-DEF_OPCODE(CB, 7E, 2, 16, "Z01_", "BIT 7, (HL)",r(HL, &t8); _Zs(t8 & (0x1 << 7));  )
-DEF_OPCODE(CB, 7F, 2, 8,  "Z01_", "BIT 7, A",   _Zs(A & (0x1 << 7));               )
+DEF_OPCODE(CB, 70, 2, 8,  "Z01_", "BIT 6, B",   _Za(B & (0x1 << 6));               )
+DEF_OPCODE(CB, 71, 2, 8,  "Z01_", "BIT 6, C",   _Za(C & (0x1 << 6));               )
+DEF_OPCODE(CB, 72, 2, 8,  "Z01_", "BIT 6, D",   _Za(D & (0x1 << 6));               )
+DEF_OPCODE(CB, 73, 2, 8,  "Z01_", "BIT 6, E",   _Za(E & (0x1 << 6));               )
+DEF_OPCODE(CB, 74, 2, 8,  "Z01_", "BIT 6, H",   _Za(H & (0x1 << 6));               )
+DEF_OPCODE(CB, 75, 2, 8,  "Z01_", "BIT 6, L",   _Za(L & (0x1 << 6));               )
+DEF_OPCODE(CB, 76, 2, 16, "Z01_", "BIT 6, (HL)",r(HL, &t8); _Za(t8 & (0x1 << 6));  )
+DEF_OPCODE(CB, 77, 2, 8,  "Z01_", "BIT 6, A",   _Za(A & (0x1 << 6));               )
+DEF_OPCODE(CB, 78, 2, 8,  "Z01_", "BIT 7, B",   _Za(B & (0x1 << 7));               )
+DEF_OPCODE(CB, 79, 2, 8,  "Z01_", "BIT 7, C",   _Za(C & (0x1 << 7));               )
+DEF_OPCODE(CB, 7A, 2, 8,  "Z01_", "BIT 7, D",   _Za(D & (0x1 << 7));               )
+DEF_OPCODE(CB, 7B, 2, 8,  "Z01_", "BIT 7, E",   _Za(E & (0x1 << 7));               )
+DEF_OPCODE(CB, 7C, 2, 8,  "Z01_", "BIT 7, H",   _Za(H & (0x1 << 7));               )
+DEF_OPCODE(CB, 7D, 2, 8,  "Z01_", "BIT 7, L",   _Za(L & (0x1 << 7));               )
+DEF_OPCODE(CB, 7E, 2, 16, "Z01_", "BIT 7, (HL)",r(HL, &t8); _Za(t8 & (0x1 << 7));  )
+DEF_OPCODE(CB, 7F, 2, 8,  "Z01_", "BIT 7, A",   _Za(A & (0x1 << 7));               )
 
 DEF_OPCODE(CB, 80, 2, 8,  "____", "RES 0, B",   B &= ~(0x01 << 0);                 )
 DEF_OPCODE(CB, 81, 2, 8,  "____", "RES 0, C",   C &= ~(0x01 << 0);                 )

@@ -1,6 +1,7 @@
 #include "cpu.h"
 #include "mmu.h"
 #include "opcodes.h"
+#include "gbm.h"
 #include "errno.h"
 
 #include <stdlib.h>
@@ -10,6 +11,47 @@
 /******************************/
 /*** Disassembler functions ***/
 /******************************/
+
+ssize_t ugb_read_opcode(uint8_t* buf, ugb_gbm* gbm, uint16_t addr)
+{
+    if (!buf || !gbm)
+        return UGB_ERR_BADARGS;
+
+    int err = ugb_mmu_read(gbm->mmu, addr, &buf[0]);
+    if (err != UGB_ERR_OK)
+        return err;
+
+    ugb_opcode* opcode = 0;
+
+    if (buf[0] == 0xCB)
+    {
+        if ((err = ugb_mmu_read(gbm->mmu, addr+1, &buf[1])) != UGB_ERR_OK)
+            return err;
+
+        opcode = &ugb_opcodes_tableCB[buf[1]];
+
+        for (int i = 0; i < opcode->size-2; ++i)
+        {
+            if ((err = ugb_mmu_read(gbm->mmu, addr+2+i, &buf[2+i])) != UGB_ERR_OK)
+                return err;
+        }
+    }
+    else
+    {
+        opcode = &ugb_opcodes_table[buf[0]];
+
+        for (int i = 0; i < opcode->size-1; ++i)
+        {
+            if ((err = ugb_mmu_read(gbm->mmu, addr+1+i, &buf[1+i])) != UGB_ERR_OK)
+                return err;
+        }
+    }
+
+    if (!opcode->microcode)
+        return UGB_ERR_BADOP;
+
+    return opcode->size;
+}
 
 ssize_t ugb_disassemble(char* str, size_t size, uint8_t* code, ssize_t addr)
 {
@@ -148,7 +190,7 @@ static void __attribute__((constructor)) _ugb_opcodes_init()
 // Set F.Z flag if x is zero
 #define _Z(x) do { uint16_t x_ = (x); if (!x_) F |= UGB_REG_F_Z_MSK; } while (0);
 // Assign F.Z flag
-#define _Zs(x) do { uint16_t x_ = (x); if (!x_) F |= UGB_REG_F_Z_MSK; else F &= ~UGB_REG_F_Z_MSK; } while (0);
+#define _Za(x) do { uint16_t x_ = (x); if (!x_) F |= UGB_REG_F_Z_MSK; else F &= ~UGB_REG_F_Z_MSK; } while (0);
 // Set F.H flag if half carry from bit 3
 #define _H3(o, n) do { uint16_t o_ = (o); uint16_t n_ = (n); if (((n_ & 0xF) - (o_ & 0xF)) < 0) F |= UGB_REG_F_H_MSK; } while (0);
 // Set F.H flag if half carry from bit 11
@@ -161,6 +203,8 @@ static void __attribute__((constructor)) _ugb_opcodes_init()
 #define _ZC15H11(o, n) do { uint16_t n3_ = (n); _C15H11((o), n3_); _Z(n3_); } while (0);
 // Set F.C flag if y != 0
 #define _Cs(y) do { uint16_t y_ = (y); if (y_ != 0) F |= UGB_REG_F_C_MSK; } while (0);
+// Assign F.C flag
+#define _Ca(y) do { uint16_t y_ = (y); if (y_ != 0) F |= UGB_REG_F_C_MSK; else F &= ~UGB_REG_F_C_MSK; } while (0);
 
 // F flags shorcuts
 #define _fZ ((F & UGB_REG_F_Z_MSK) >> UGB_REG_F_Z_BIT)
@@ -170,7 +214,6 @@ static void __attribute__((constructor)) _ugb_opcodes_init()
 
 // Conditionals
 #define _IF(cond, code, overhead) do { if ((cond)) { code; } } while (0);
-#define _NIF(cond, code, overhead) do { if (!(cond)) { code; } } while (0);
 
 static void _ugb_opcode_update_flags(ugb_cpu* cpu, char flags[])
 {
@@ -200,18 +243,19 @@ int _ugb_opcode ## prefix ## opcode(ugb_cpu* cpu, uint8_t imm[]) \
 }
 #include "opcodes.def"
 
-#undef _NIF
 #undef _IF
 #undef _fC
 #undef _fH
 #undef _fN
 #undef _fZ
+#undef _Ca
 #undef _Cs
 #undef _ZC15H11
 #undef _C15H11
 #undef _C15
 #undef _H11
 #undef _H3
+#undef _Za
 #undef _Z
 #undef swap
 #undef sr8

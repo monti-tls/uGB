@@ -1,10 +1,14 @@
+#define _GNU_SOURCE
+
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "mmu.h"
 #include "cpu.h"
 #include "opcodes.h"
 #include "gbm.h"
+#include "debugger.h"
 #include "errno.h"
 
 uint8_t bios_data[] =
@@ -30,11 +34,19 @@ uint8_t bios_data[] =
 
 uint8_t vram_data[0x2000];
 uint8_t zpage_data[0x7F];
+uint8_t hwreg_data[0x80];
+
+uint8_t carthdr_data[0x50] =
+{
+    0x00, // NOP
+    0x00, 0x00, // JP PC+? = $0150
+    0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B, 0x03, 0x73, 0x00, 0x83, 0x00, 0x0C, 0x00, 0x0D,
+    0x00, 0x08, 0x11, 0x1F, 0x88, 0x89, 0x00, 0x0E, 0xDC, 0xCC, 0x6E, 0xE6, 0xDD, 0xDD, 0xD9, 0x99,
+    0xBB, 0xBB, 0x67, 0x63, 0x6E, 0x0E, 0xEC, 0xCC, 0xDD, 0xDC, 0x99, 0x9F, 0xBB, 0xB9, 0x33, 0x3E,
+};
 
 int main(int argc, char** argv)
 {
-    int err;
-
     ugb_gbm* gbm = ugb_gbm_create();
 
     /************************/
@@ -45,7 +57,7 @@ int main(int argc, char** argv)
     bios->type = UGB_MMU_RODATA;
     bios->rodata = &bios_data[0];
     bios->low_addr = 0x0000;
-    bios->high_addr = bios->low_addr + sizeof(bios_data) - 1;
+    bios->high_addr = 0x00FF;
     ugb_mmu_add_map(gbm->mmu, bios);
 
     ugb_mmu_map* vram = malloc(sizeof(ugb_mmu_map));
@@ -62,33 +74,23 @@ int main(int argc, char** argv)
     zpage->low_addr = 0xFF80;
     ugb_mmu_add_map(gbm->mmu, zpage);
 
-    /*************************/
-    /*** Create CPU, reset ***/
-    /*************************/
+    ugb_mmu_map* hwreg = malloc(sizeof(ugb_mmu_map));
+    hwreg->type = UGB_MMU_DATA;
+    hwreg->data = &hwreg_data[0];
+    hwreg->high_addr = 0xFF7F;
+    hwreg->low_addr = 0xFF00;
+    ugb_mmu_add_map(gbm->mmu, hwreg);
 
-    ugb_cpu_reset(gbm->cpu);
+    ugb_mmu_map* carthdr = malloc(sizeof(ugb_mmu_map));
+    carthdr->type = UGB_MMU_DATA;
+    carthdr->data = &carthdr_data[0];
+    carthdr->high_addr = 0x014F;
+    carthdr->low_addr = 0x0100;
+    ugb_mmu_add_map(gbm->mmu, carthdr);
 
-    ugb_mmu_write(gbm->mmu, 0xFFFE, 0x0F);
-
-    char dis_buf[128];
-    while (*gbm->cpu->regs.PC <= bios->high_addr)
-    {
-        ugb_disassemble(&dis_buf[0], sizeof(dis_buf), &bios_data[*gbm->cpu->regs.PC], *gbm->cpu->regs.PC);
-        printf("[%04X] %s\n", *gbm->cpu->regs.PC, &dis_buf[0]);
-
-        if ((err = ugb_cpu_step(gbm->cpu)) < 0)
-        {
-            printf("[%04X] <error: %s>\n", *gbm->cpu->regs.PC, ugb_strerror(err));
-            break;
-        }
-
-        printf("HL = %04X ", *gbm->cpu->regs.HL);
-        printf("F = %c%c%c%c\n\n",
-            ((*gbm->cpu->regs.F & UGB_REG_F_Z_MSK) ? 'Z' : '_'),
-            ((*gbm->cpu->regs.F & UGB_REG_F_N_MSK) ? 'N' : '_'),
-            ((*gbm->cpu->regs.F & UGB_REG_F_H_MSK) ? 'H' : '_'),
-            ((*gbm->cpu->regs.F & UGB_REG_F_C_MSK) ? 'C' : '_'));
-    }
+    int err = ugb_debugger_mainloop(gbm);
+    if (err < 0)
+        printf("error: %s\n", ugb_strerror(err));
 
     /***************/
     /*** Cleanup ***/

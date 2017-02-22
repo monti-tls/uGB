@@ -69,7 +69,6 @@ ssize_t ugb_cpu_step(ugb_cpu* cpu)
             return UGB_ERR_BADOP;
 
         // Get immediate operands if applicable
-        uint8_t imm[4];
         for (int i = 0; i < opcode->size - 2; ++i)
         {
             if ((err = ugb_mmu_read(cpu->gbm->mmu, *cpu->regs.PC + 2 + i, &imm[i])) != UGB_ERR_OK)
@@ -84,7 +83,6 @@ ssize_t ugb_cpu_step(ugb_cpu* cpu)
             return UGB_ERR_BADOP;
 
         // Get immediate operands if applicable
-        uint8_t imm[4];
         for (int i = 0; i < opcode->size - 1; ++i)
         {
             if ((err = ugb_mmu_read(cpu->gbm->mmu, *cpu->regs.PC + 1 + i, &imm[i])) != UGB_ERR_OK)
