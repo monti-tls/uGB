@@ -1,3 +1,5 @@
+#define _POSIX_SOURCE
+
 #include "debugger.h"
 #include "cpu.h"
 #include "opcodes.h"
@@ -5,6 +7,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <setjmp.h>
 #include <signal.h>
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -15,8 +18,11 @@ static ugb_breakpoint* _last_breakpoint = 0;
 
 static char _quit;
 static ugb_gbm* _gbm;
+static sigjmp_buf _jmpbuf;
 
 static char* _skip_whitespace(char* line);
+static char* _strip_whitespace(char* line);
+static void _handle_signals(int signo);
 static void _com_help(char* args);
 static void _com_quit(char* args);
 static void _com_breakpoint(char* args);
@@ -70,6 +76,15 @@ char* _strip_whitespace(char* line)
     line[len] = '\0';
 
     return line;
+}
+
+void _handle_signals(int signo)
+{
+    if (signo == SIGINT)
+    {
+        printf("Interrupt.\n");
+        siglongjmp(_jmpbuf, 1);
+    }
 }
 
 void _com_help(char* args)
@@ -384,8 +399,14 @@ int ugb_debugger_mainloop(ugb_gbm* gbm)
 
     _gbm = gbm;
 
+    while (sigsetjmp(_jmpbuf, 1) != 0);
+
     for (_quit = 0; !_quit; )
     {
+        signal(SIGINT, _handle_signals);
+        rl_catch_signals = 1;
+        rl_set_signals();
+
         char* input_line = readline("gbm$ ");
 
         // Exit on Ctrl+D
