@@ -29,7 +29,11 @@ typedef struct ugb_mmu_map
         void* target_ptr;
         uint8_t* data;
         uint8_t const* rodata;
-        int (*soft_handler)(struct ugb_mmu_map*, int, uint16_t, uint8_t*);
+        struct
+        {
+            int (*handler)(void*, int, uint16_t, uint8_t*);
+            void* cookie;
+        } soft;
     };
 
     struct ugb_mmu_map* prev;

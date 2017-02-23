@@ -254,7 +254,7 @@ DEF_OPCODE(, D5, 1, 16, "____", "PUSH DE",      _PUSH(DE);                      
 DEF_OPCODE(, D6, 2, 8,  "Z1HC", "SUB d8",       _SUB(d8);                          )
 DEF_OPCODE(, D7, 1, 16, "____", "RST 10",       _CALL(0x10);                       )
 DEF_OPCODE(, D8, 1, 8,  "____", "RET C",        _IF(C, _POP(PC), 12);              )
-DEF_OPCODE(, D9, 1, 16, "____", "RETI",         _POP(PC); IE = 1;                  )
+DEF_OPCODE(, D9, 1, 16, "____", "RETI",         _POP(PC); _IE();                   )
 DEF_OPCODE(, DA, 3, 12, "____", "JP C, a16",    _IF(C, PC = a16, 4);               )
 // DEF_OPCODE(, DB) invalid
 DEF_OPCODE(, DC, 3, 12, "____", "CALL C, a16",  _IF(C, _CALL(a16), 12);            )
@@ -282,7 +282,7 @@ DEF_OPCODE(, EF, 1, 16, "____", "RST 28",       _CALL(0x28);                    
 DEF_OPCODE(, F0, 2, 12, "____", "LDH A, (a8)",  r(0xFF00 + a8, &A);                )
 DEF_OPCODE(, F1, 1, 12, "ZNHC", "POP AF",       _POP(AF);                          )
 DEF_OPCODE(, F2, 2, 8,  "____", "LD A, (C)",    r(0xFF00 + C, &A);                 )
-DEF_OPCODE(, F3, 1, 4,  "____", "DI",           IE = 0;                            )
+DEF_OPCODE(, F3, 1, 4,  "____", "DI",           _DI();                             )
 // DEF_OPCODE(, F4) invalid
 DEF_OPCODE(, F5, 1, 16, "____", "PUSH AF",      _PUSH(AF);                         )
 DEF_OPCODE(, F6, 2, 8,  "Z000", "OR d8",        A |= d8; _Z(A);                    )
@@ -290,7 +290,7 @@ DEF_OPCODE(, F7, 1, 16, "____", "RST 30",       _CALL(0x30);                    
 DEF_OPCODE(, F8, 2, 12, "00HC", "LD HL, SPr8",  _C15H11(HL, HL += (SP + r8));      )
 DEF_OPCODE(, F9, 1, 8,  "____", "LD SP, HL",    SP = HL;                           )
 DEF_OPCODE(, FA, 3, 16, "____", "LD A, (a16)",  r(a16, &A);                        )
-DEF_OPCODE(, FB, 1, 4,  "____", "EI",           IE = 1;                            )
+DEF_OPCODE(, FB, 1, 4,  "____", "EI",           _IE();                             )
 // DEF_OPCODE(, FC) invalid
 // DEF_OPCODE(, FD) invalid
 DEF_OPCODE(, FE, 2, 8,  "Z1HC", "CP d8",        _ZC15H11(A, A - d8);               )

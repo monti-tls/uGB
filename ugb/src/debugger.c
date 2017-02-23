@@ -31,7 +31,7 @@ static void _com_info(char* args);
 static void _com_disassemble(char* args);
 static void _com_step(char* args);
 static void _com_continue(char* args);
-static void _com_print(char* args);
+static void _com_register(char* args);
 
 typedef struct ugb_command
 {
@@ -51,7 +51,7 @@ static ugb_command _commands[] =
     { "disassemble", &_com_disassemble, "Disassemble GB instructions" },
     { "step",        &_com_step,        "Execute a single GB instruction then pause" },
     { "continue",    &_com_continue,    "Continue execution until a breakpoint is hit" },
-    { "print",       &_com_print,       "Examine registers" },
+    { "register",    &_com_register,    "Examine registers" },
     { 0, 0, 0}
 };
 
@@ -274,14 +274,15 @@ void _com_disassemble(char* args)
 
 void _com_step(char* args)
 {
-    ugb_cpu_step(_gbm->cpu);
+    ugb_cpu_step(_gbm->cpu, 0);
+    _com_disassemble(0);
 }
 
 void _com_continue(char* args)
 {
     for (;;)
     {
-        ugb_cpu_step(_gbm->cpu);
+        ugb_cpu_step(_gbm->cpu, 0);
 
         ugb_breakpoint* match = 0;
         for (ugb_breakpoint* bp = _breakpoints; bp; bp = bp->next)
@@ -301,7 +302,7 @@ void _com_continue(char* args)
     }
 }
 
-void _com_print(char* args)
+void _com_register(char* args)
 {
     static struct reg_t
     {
@@ -323,10 +324,12 @@ void _com_print(char* args)
         {
             printf("%s = ", r->name);
 
+            void* data_ptr = &_gbm->cpu->regs.data[r->offset];
+
             if (r->word)
-                printf("%04X", *((uint16_t*) &_gbm->cpu->regs.data[r->offset]));
+                printf("$%04X", *((uint16_t*) data_ptr));
             else
-                printf("%02X", *((uint8_t*) &_gbm->cpu->regs.data[r->offset]));
+                printf("$%02X", *((uint8_t*) data_ptr));
 
             if (r->offset == UGB_REG_F)
             {
@@ -407,7 +410,7 @@ int ugb_debugger_mainloop(ugb_gbm* gbm)
         rl_catch_signals = 1;
         rl_set_signals();
 
-        char* input_line = readline("gbm$ ");
+        char* input_line = readline("(ugb) ");
 
         // Exit on Ctrl+D
         if (!input_line)

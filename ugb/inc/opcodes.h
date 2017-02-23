@@ -14,7 +14,7 @@ typedef struct ugb_opcode
     uint8_t cycles;
     const char* flags;
 
-    int(*microcode)(struct ugb_cpu*, uint8_t[]);
+    int(*microcode)(struct ugb_cpu*, uint8_t[], size_t*);
 } ugb_opcode;
 
 extern ugb_opcode ugb_opcodes_table[];

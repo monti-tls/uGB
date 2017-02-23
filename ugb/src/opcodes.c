@@ -114,7 +114,7 @@ ssize_t ugb_disassemble(char* str, size_t size, uint8_t* code, ssize_t addr)
 ugb_opcode ugb_opcodes_table[0x100];
 ugb_opcode ugb_opcodes_tableCB[0x100];
 
-#define DEF_OPCODE(prefix, opcode, ...) extern int _ugb_opcode ## prefix ## opcode(ugb_cpu*, uint8_t[]);
+#define DEF_OPCODE(prefix, opcode, ...) extern int _ugb_opcode ## prefix ## opcode(ugb_cpu*, uint8_t[], size_t*);
 #include "opcodes.def"
 
 static void __attribute__((constructor)) _ugb_opcodes_init()
@@ -213,7 +213,11 @@ static void __attribute__((constructor)) _ugb_opcodes_init()
 #define _fC ((F & UGB_REG_F_C_MSK) >> UGB_REG_F_C_BIT)
 
 // Conditionals
-#define _IF(cond, code, overhead) do { if ((cond)) { code; } } while (0);
+#define _IF(cond, code, overhead) do { if ((cond)) { code; _cycles += (overhead); } } while (0);
+
+// Interrupt masking
+#define _IE() do { IE |= UGB_REG_IE_IME_MSK; } while (0);
+#define _DI() do { IE &= ~UGB_REG_IE_IME_MSK; } while (0);
 
 static void _ugb_opcode_update_flags(ugb_cpu* cpu, char flags[])
 {
@@ -232,12 +236,14 @@ static void _ugb_opcode_update_flags(ugb_cpu* cpu, char flags[])
 }
 
 #define DEF_OPCODE(prefix, opcode, size, cycles, flags, mnemonic, microcode)\
-int _ugb_opcode ## prefix ## opcode(ugb_cpu* cpu, uint8_t imm[]) \
+int _ugb_opcode ## prefix ## opcode(ugb_cpu* cpu, uint8_t imm[], size_t* cycles_counter) \
 { \
     int __attribute__((unused)) err = 0; \
     uint8_t __attribute__((unused)) t8 = 0; \
     uint16_t __attribute__((unused)) t16 = 0; \
+    size_t _cycles = cycles; \
     microcode; \
+    if (cycles_counter) *cycles_counter = _cycles; \
     _ugb_opcode_update_flags(cpu, (flags)); \
     return UGB_ERR_OK; \
 }

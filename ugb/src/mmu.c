@@ -108,7 +108,7 @@ int ugb_mmu_read(ugb_mmu* mmu, uint16_t addr, uint8_t* data)
             break;
 
         case UGB_MMU_SOFT:
-            return (*map->soft_handler)(map, UGB_MMU_READ, addr, data);
+            return (*map->soft.handler)(map->soft.cookie, UGB_MMU_READ, addr - map->low_addr, data);
 
         default:
             return UGB_ERR_BADCONF;
@@ -136,7 +136,7 @@ int ugb_mmu_write(ugb_mmu* mmu, uint16_t addr, uint8_t data)
             return UGB_ERR_MMU_RO;
 
         case UGB_MMU_SOFT:
-            return (*map->soft_handler)(map, UGB_MMU_WRITE, addr, &data);
+            return (*map->soft.handler)(map->soft.cookie, UGB_MMU_WRITE, addr - map->low_addr, &data);
 
         default:
             return UGB_ERR_BADCONF;

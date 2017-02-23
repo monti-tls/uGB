@@ -1,6 +1,7 @@
 #include "cpu.h"
 #include "mmu.h"
 #include "opcodes.h"
+#include "hwio.h"
 #include "errno.h"
 
 #include <stdlib.h>
@@ -43,12 +44,46 @@ ssize_t ugb_cpu_reset(ugb_cpu* cpu)
     return *cpu->regs.PC;
 }
 
-ssize_t ugb_cpu_step(ugb_cpu* cpu)
+ssize_t ugb_cpu_step(ugb_cpu* cpu, size_t* cycles)
 {
     int err;
 
     if (!cpu)
         return UGB_ERR_BADARGS;
+
+    // If enabled, process eventual interrupts
+    if (*cpu->regs.IE & UGB_REG_IE_IME_MSK)
+    {
+        // Get the memory-mapped IF register
+        uint8_t* hwreg_if = &cpu->gbm->hwio->data[UGB_HWIO_REG_IF];
+
+        // Check interrupt flags by priority
+        for (int i = 0; i <= 4; ++i)
+        {
+            // If interrupt is pending and unmasked
+            if ((*cpu->regs.IE & (0x01 << i)) && (*hwreg_if & (0x01 << i)))
+            {
+                // Reset interrupt flag
+                *hwreg_if = 0;
+
+                // Reset IME flag
+                *cpu->regs.IE &= ~UGB_REG_IE_IME_MSK;
+
+                // Push PC
+                uint8_t* PC = (uint8_t*) cpu->regs.PC;
+                if ((err = ugb_mmu_write(cpu->gbm->mmu, (*cpu->regs.SP)-1, PC[1])) != UGB_ERR_OK ||
+                    (err = ugb_mmu_write(cpu->gbm->mmu, (*cpu->regs.SP)-2, PC[0])) != UGB_ERR_OK)
+                {
+                    return err;
+                }
+
+                *cpu->regs.SP -= 2;
+
+                // Jump to interrupt vector
+                *cpu->regs.PC = 0x0040 + i * 8;
+            }
+        }
+    }
 
     // Fetch instruction opcode (TODO: handle CB prefix)
     uint8_t op;
@@ -94,10 +129,32 @@ ssize_t ugb_cpu_step(ugb_cpu* cpu)
     *cpu->regs.PC += opcode->size;
 
     // Execute instruction
-    if ((err = (*opcode->microcode)(cpu, imm)) != UGB_ERR_OK)
+    if ((err = (*opcode->microcode)(cpu, imm, cycles)) != UGB_ERR_OK)
         return err;
 
-    //TODO: manage cycles
+    return UGB_ERR_OK;
+}
 
-    return *cpu->regs.PC;
+int ugb_cpu_ie_reg_mmu_handler(void* cookie, int op, uint16_t offset, uint8_t* data)
+{
+    if (!cookie || !data || offset != 0)
+        return UGB_ERR_BADARGS;
+
+    ugb_cpu* cpu = (ugb_cpu*) cookie;
+
+    switch (op)
+    {
+        case UGB_MMU_READ:
+            // Only expose bits 4-0
+            *data = (*cpu->regs.IE) & 0x1F;
+            break;
+
+        case UGB_MMU_WRITE:
+            // Only expose bits 4-0
+            *cpu->regs.IE &= ~0x1F;
+            *cpu->regs.IE |= (*data & 0x1F);
+            break;
+    }
+
+    return UGB_ERR_OK;
 }

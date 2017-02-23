@@ -19,6 +19,13 @@ DEF_REGW(PC, 0x2)  // Program Counter
 
 DEF_REGB(IE, 0x4)  // Interrupts Enable Register
 
+DEF_REG_MSK(IE, IME, 7) // Interrupt Master Enable (see DI, EI opcodes)
+DEF_REG_MSK(IE, X,   4) // External interrupt (pins P10-P13)
+DEF_REG_MSK(IE, S,   3) // Serial communication
+DEF_REG_MSK(IE, T,   2) // Timer overflow
+DEF_REG_MSK(IE, L,   1) // LCD interrupt
+DEF_REG_MSK(IE, V,   0) // V-blank
+
 DEF_REGW(AF, 0xA)  // Flags | Accumulator
 DEF_REGW(BC, 0xC)  // General Purpose C | B
 DEF_REGW(DE, 0xE)  // General Purpose E | D

@@ -39,6 +39,9 @@ ugb_cpu* ugb_cpu_create(ugb_gbm* gbm);
 void ugb_cpu_destroy(ugb_cpu* cpu);
 
 ssize_t ugb_cpu_reset(ugb_cpu* cpu);
-ssize_t ugb_cpu_step(ugb_cpu* cpu);
+ssize_t ugb_cpu_step(ugb_cpu* cpu, size_t* ticks);
+
+// Handler for Interrupt Enable memory-mapped register
+int ugb_cpu_ie_reg_mmu_handler(void* cookie, int op, uint16_t offset, uint8_t* data);
 
 #endif // __UGB_CPU_H__
