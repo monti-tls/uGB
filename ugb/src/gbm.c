@@ -59,6 +59,14 @@ ugb_gbm* ugb_gbm_create()
     vram->data = gbm->gpu->vram;
     ugb_mmu_add_map(gbm->mmu, vram);
 
+    // Map the GPU's Object Attribute Memory
+    ugb_mmu_map* oam;
+    if (!(oam = ugb_mmu_map_create(UGB_OAM_LO, UGB_OAM_HI)))
+        goto fail;
+    oam->type = UGB_MMU_DATA;
+    oam->data = gbm->gpu->oam;
+    ugb_mmu_add_map(gbm->mmu, oam);
+
     // Map hardware IO registers
     ugb_mmu_map* hwio;
     if (!(hwio = ugb_mmu_map_create(UGB_HWIO_LO, UGB_HWIO_HI)))

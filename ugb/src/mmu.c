@@ -2,6 +2,7 @@
 #include "errno.h"
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 ugb_mmu* ugb_mmu_create(ugb_gbm* gbm)

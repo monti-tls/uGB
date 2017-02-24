@@ -14,6 +14,7 @@ typedef struct ugb_gpu
 
     uint8_t* framebuf;
     uint8_t* vram;
+    uint8_t* oam;
 } ugb_gpu;
 
 ugb_gpu* ugb_gpu_create(ugb_gbm* gbm);

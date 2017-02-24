@@ -24,6 +24,10 @@
 #define UGB_RAM0_HI      0xDFFF
 #define UGB_RAM0_SZ      0x2000
 
+#define UGB_OAM_LO       0xFE00
+#define UGB_OAM_HI       0xFE9F
+#define UGB_OAM_SZ       0x00A0
+
 #define UGB_HWIO_LO      0xFF00
 #define UGB_HWIO_HI      0xFF7F
 #define UGB_HWIO_SZ      0x0080

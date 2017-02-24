@@ -21,7 +21,8 @@ ugb_gpu* ugb_gpu_create(ugb_gbm* gbm)
     gpu->mode_clocks[3] = UGB_GPU_MODE11_CLOCKS;
 
     if (!(gpu->framebuf = malloc(UGB_GPU_SCREEN_W * UGB_GPU_SCREEN_H)) ||
-        !(gpu->vram = malloc(0x2000)))
+        !(gpu->vram = malloc(UGB_VRAM_SZ)) ||
+        !(gpu->oam = malloc(UGB_OAM_SZ)))
     {
         ugb_gpu_destroy(gpu);
         return 0;
@@ -34,6 +35,8 @@ void ugb_gpu_destroy(ugb_gpu* gpu)
 {
     if (gpu)
     {
+        free(gpu->oam);
+        free(gpu->vram);
         free(gpu->framebuf);
         free(gpu);
     }
@@ -89,8 +92,8 @@ static int _render_scanline(ugb_gpu* gpu)
     {
         g2rgb332[(hwio_bgp >> 0) & 0x3],
         g2rgb332[(hwio_bgp >> 2) & 0x3],
-        g2rgb332[(hwio_bgp >> 3) & 0x3],
-        g2rgb332[(hwio_bgp >> 4) & 0x3]
+        g2rgb332[(hwio_bgp >> 4) & 0x3],
+        g2rgb332[(hwio_bgp >> 6) & 0x3]
     };
 
     // Go to the current BG MAP line

@@ -17,7 +17,16 @@
 #include "constants.h"
 #include "errno.h"
 
-#include "rom/opus5.h"
+#include "rom/01_special.h"
+#include "rom/03_op_sp_hl.h"
+#include "rom/04_op_r_imm.h"
+#include "rom/07_jr_jp_call_ret_rst.h"
+#include "rom/08_misc.h"
+#include "rom/09_op_r_r.h"
+#include "rom/10_bit_ops.h"
+#include "rom/cpu_instrs.h"
+
+#include "rom/tetris.h"
 
 uint8_t carthdr_data[] =
 {
@@ -79,6 +88,14 @@ void* sdl_main(void* cookie)
     return 0;
 }
 
+int sb_hook(ugb_hwreg* reg, void* cookie)
+{
+    ugb_gbm* gbm = (ugb_gbm*) cookie;
+
+    printf("%c", gbm->hwio->data[UGB_HWIO_REG_SB]);
+    return 0;
+}
+
 int main(int argc, char** argv)
 {
     // Create a fresh GameBoy
@@ -87,28 +104,38 @@ int main(int argc, char** argv)
     // Add the cartridge map
     ugb_mmu_map* rom0 = malloc(sizeof(ugb_mmu_map));
     rom0->low_addr = UGB_CART_ROM0_LO;
-    rom0->high_addr = 0x7FFF; // UGB_CART_ROM0_LO + sizeof(opus5); // UGB_CART_ROM0_HI;
+    rom0->high_addr = UGB_CART_ROM0_LO + sizeof(ugb_rom_01_special) - 1; //0x7FFF;
     rom0->type = UGB_MMU_DATA;
-    rom0->data = &ugb_rom_opus5[0];
+    rom0->data = &ugb_rom_01_special[0];
     ugb_mmu_add_map(gbm->mmu, rom0);
 
-    // Map the unused area (wtf ?)
-    uint8_t mem[0x60];
-    ugb_mmu_map* spare = malloc(sizeof(ugb_mmu_map));
-    spare->low_addr = 0xFEA0;
-    spare->high_addr = 0xFEFF;
-    spare->type = UGB_MMU_DATA;
-    spare->data = &mem[0];
-    ugb_mmu_add_map(gbm->mmu, spare);
+    // Map RAM1
+    uint8_t ram1_data[0x2000];
+    ugb_mmu_map* ram1 = malloc(sizeof(ugb_mmu_map));
+    ram1->low_addr = 0xA000;
+    ram1->high_addr = 0xBFFF;
+    ram1->type = UGB_MMU_DATA;
+    ram1->data = &ram1_data[0];
+    ugb_mmu_add_map(gbm->mmu, ram1);
 
-    // Map the unsed area (wtf ?)
-    uint8_t oam_data[0x100];
-    ugb_mmu_map* oam = malloc(sizeof(ugb_mmu_map));
-    oam->low_addr = 0xFE00;
-    oam->high_addr = 0xFE9F;
-    oam->type = UGB_MMU_DATA;
-    oam->data = &oam_data[0];
-    ugb_mmu_add_map(gbm->mmu, oam);
+    // Map echo internal RAM0
+    ugb_mmu_map* ram0 = malloc(sizeof(ugb_mmu_map));
+    ram0->low_addr = 0xE000;
+    ram0->high_addr = 0xFDFF;
+    ram0->type = UGB_MMU_DATA;
+    ram0->data = &gbm->mem.ram0[0];
+    ugb_mmu_add_map(gbm->mmu, ram0);
+
+    // Map echo internal RAM0
+    uint8_t ill_data[0x60];
+    ugb_mmu_map* ill = malloc(sizeof(ugb_mmu_map));
+    ill->low_addr = 0xFEA0;
+    ill->high_addr = 0xFEFF;
+    ill->type = UGB_MMU_DATA;
+    ill->data = &ill_data[0];
+    ugb_mmu_add_map(gbm->mmu, ill);
+
+    ugb_hwio_set_hook(gbm->hwio, UGB_HWIO_REG_SB, &sb_hook, (void*) gbm);
 
     // Start SDL display thread
     pthread_t disp;
