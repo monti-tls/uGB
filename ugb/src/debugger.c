@@ -2,6 +2,7 @@
 
 #include "debugger.h"
 #include "cpu.h"
+#include "mmu.h"
 #include "opcodes.h"
 #include "errno.h"
 
@@ -31,7 +32,9 @@ static void _com_info(char* args);
 static void _com_disassemble(char* args);
 static void _com_step(char* args);
 static void _com_continue(char* args);
+static void _com_reset(char* args);
 static void _com_register(char* args);
+static void _com_print(char* args);
 
 typedef struct ugb_command
 {
@@ -51,7 +54,9 @@ static ugb_command _commands[] =
     { "disassemble", &_com_disassemble, "Disassemble GB instructions" },
     { "step",        &_com_step,        "Execute a single GB instruction then pause" },
     { "continue",    &_com_continue,    "Continue execution until a breakpoint is hit" },
+    { "reset",       &_com_reset,       "Reset the GBM processor" },
     { "register",    &_com_register,    "Examine registers" },
+    { "print",       &_com_print,       "Examine memory contents" },
     { 0, 0, 0}
 };
 
@@ -82,7 +87,8 @@ void _handle_signals(int signo)
 {
     if (signo == SIGINT)
     {
-        printf("Interrupt.\n");
+        printf("Interrupted.\n");
+        _com_disassemble(0);
         siglongjmp(_jmpbuf, 1);
     }
 }
@@ -274,7 +280,13 @@ void _com_disassemble(char* args)
 
 void _com_step(char* args)
 {
-    ugb_cpu_step(_gbm->cpu, 0);
+    int err;
+    if ((err = ugb_gbm_step(_gbm)) != UGB_ERR_OK)
+    {
+        printf("Error: %s.\n", ugb_strerror(err));
+        return;
+    }
+
     _com_disassemble(0);
 }
 
@@ -282,7 +294,12 @@ void _com_continue(char* args)
 {
     for (;;)
     {
-        ugb_cpu_step(_gbm->cpu, 0);
+        int err;
+        if ((err = ugb_gbm_step(_gbm)) != UGB_ERR_OK)
+        {
+            printf("Error: %s.\n", ugb_strerror(err));
+            return;
+        }
 
         ugb_breakpoint* match = 0;
         for (ugb_breakpoint* bp = _breakpoints; bp; bp = bp->next)
@@ -297,9 +314,16 @@ void _com_continue(char* args)
         if (match)
         {
             printf("Stopped at breakpoint #%d (0x%04X).\n", match->id, match->addr);
+            _com_disassemble(0);
             break;
         }
     }
+}
+
+void _com_reset(char* args)
+{
+    ugb_gbm_reset(_gbm);
+    _com_disassemble(0);
 }
 
 void _com_register(char* args)
@@ -349,6 +373,105 @@ void _com_register(char* args)
     }
 
     printf("No register named \"%s\".\n", args);
+}
+
+void _com_print(char* args)
+{
+    if (!args || !*args)
+    {
+        printf("Expecting address range.\n");
+        return;
+    }
+
+    uint16_t first = 0;
+    uint16_t last = 0;
+
+    // Get start address
+    char* end = 0;
+    unsigned long addr = (unsigned long) strtol(args, &end, 16);
+
+    if (!end || end == args ||
+        addr > 0xFFFF)
+    {
+        printf("Invalid address \"%s\".\n", args);
+        return;
+    }
+
+    first = addr;
+    last = first;
+
+    end = _skip_whitespace(end);
+    if (*end == '-')
+    {
+        char* range = ++end;
+        addr = (unsigned long) strtol(range, &end, 16);
+
+        if (!end || end == range ||
+            addr > 0xFFFF)
+        {
+            printf("Invalid address \"%s\".\n", range);
+            return;
+        }
+
+        last = addr;
+    }
+    else if (*end == '+')
+    {
+        char* size = ++end;
+        addr = (unsigned long) strtol(size, &end, 0);
+
+        if (!end || end == size ||
+            addr > 0xFFFF)
+        {
+            printf("Invalid size \"%s\".\n", size);
+            return;
+        }
+
+        last = first + addr;
+    }
+    else if (*end)
+    {
+        printf("Invalid address range expression \"%s\".\n", args);
+        return;
+    }
+
+    if (last < first)
+    {
+        printf("Invalid address range expression \"%s\".\n", args);
+        return;
+    }
+
+    int row = 0;
+    int col = 0;
+
+    for (uint16_t addr = first; addr <= last; ++addr)
+    {
+        if (col == 0)
+            printf("%04X: ", addr);
+
+        int err;
+        uint8_t value;
+        if ((err = ugb_mmu_read(_gbm->mmu, addr, &value)) != UGB_ERR_OK)
+        {
+            printf("Error: %s\n", ugb_strerror(err));
+            return;
+        }
+
+        printf("%02X ", value);
+
+        ++col;
+
+        if (!(col % 8))
+            printf(" ");
+
+        if (col >= 24 || addr == last)
+        {
+            printf("\b\n");
+
+            col = 0;
+            ++row;
+        }
+    }
 }
 
 int ugb_debugger_add_breakpoint(uint16_t addr)

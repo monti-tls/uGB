@@ -11,6 +11,9 @@ typedef struct ugb_gpu
 
     size_t clock;
     size_t mode_clocks[4];
+
+    uint8_t* framebuf;
+    uint8_t* vram;
 } ugb_gpu;
 
 ugb_gpu* ugb_gpu_create(ugb_gbm* gbm);

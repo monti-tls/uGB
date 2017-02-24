@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <pthread.h>
+
+#include <SDL2/SDL.h>
 
 #include "mmu.h"
 #include "cpu.h"
@@ -11,6 +14,7 @@
 #include "opcodes.h"
 #include "gbm.h"
 #include "debugger.h"
+#include "constants.h"
 #include "errno.h"
 
 uint8_t bios_data[] =
@@ -33,7 +37,6 @@ uint8_t bios_data[] =
     0xf5, 0x06, 0x19, 0x78, 0x86, 0x23, 0x05, 0x20, 0xfb, 0x86, 0x20, 0xfe, 0x3e, 0x01, 0xe0, 0x50,
 };
 
-uint8_t vram_data[0x2000];
 uint8_t zpage_data[0x7F];
 uint8_t wave_pattern_data[0x10];
 
@@ -45,6 +48,57 @@ uint8_t carthdr_data[] =
     0xbb, 0xb9, 0x33, 0x3e, 0x54, 0x45, 0x54, 0x52, 0x49, 0x53, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x0b, 0x89, 0xb5,
 };
+
+void* sdl_main(void* cookie)
+{
+    ugb_gbm* gbm = (ugb_gbm*) cookie;
+
+    if(SDL_Init(SDL_INIT_VIDEO) < 0)
+    {
+        printf("SDL_Error: %s\n", SDL_GetError());
+        return 0;
+    }
+
+    SDL_Window* window = SDL_CreateWindow("uGB",
+        SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+        3*UGB_GPU_SCREEN_W, 3*UGB_GPU_SCREEN_H,
+        SDL_WINDOW_SHOWN);
+
+    if (!window)
+    {
+        printf("SDL_Error: %s\n", SDL_GetError());
+        return 0;
+    }
+
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, 0);
+
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderClear(renderer);
+    SDL_RenderPresent(renderer);
+
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
+    SDL_RenderSetLogicalSize(renderer, UGB_GPU_SCREEN_W, UGB_GPU_SCREEN_H);
+
+    SDL_Texture* tex = SDL_CreateTexture(renderer,
+        SDL_PIXELFORMAT_RGB332,
+        SDL_TEXTUREACCESS_STREAMING,
+        UGB_GPU_SCREEN_W, UGB_GPU_SCREEN_H);
+
+    for (;;)
+    {
+        SDL_UpdateTexture(tex, 0, gbm->gpu->framebuf, UGB_GPU_SCREEN_W);
+
+        SDL_RenderClear(renderer);
+        SDL_RenderCopy(renderer, tex, 0, 0);
+        SDL_RenderPresent(renderer);
+
+        SDL_Delay(100);
+    }
+
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+    return 0;
+}
 
 int main(int argc, char** argv)
 {
@@ -69,10 +123,10 @@ int main(int argc, char** argv)
     ugb_mmu_add_map(gbm->mmu, carthdr);
 
     ugb_mmu_map* vram = malloc(sizeof(ugb_mmu_map));
-    vram->low_addr = 0x8000;
-    vram->high_addr = 0x9FFF;
+    vram->low_addr = UGB_VRAM_LOW;
+    vram->high_addr = UGB_VRAM_HIGH;
     vram->type = UGB_MMU_DATA;
-    vram->data = &vram_data[0];
+    vram->data = gbm->gpu->vram;
     ugb_mmu_add_map(gbm->mmu, vram);
 
     ugb_mmu_map* hwreg = malloc(sizeof(ugb_mmu_map));
@@ -96,26 +150,18 @@ int main(int argc, char** argv)
     ie_reg->type = UGB_MMU_SOFT;
     ie_reg->soft.handler = &ugb_cpu_ie_reg_mmu_handler;
     ie_reg->soft.cookie = gbm->cpu;
+    ugb_mmu_add_map(gbm->mmu, ie_reg);
 
     /*****************/
     /*** Main loop ***/
     /*****************/
 
-    /*
+    pthread_t disp;
+    pthread_create(&disp, 0, &sdl_main, (void*) gbm);
+
     int err = ugb_debugger_mainloop(gbm);
     if (err < 0)
         printf("error: %s\n", ugb_strerror(err));
-    */
-
-    int err;
-    size_t cycles;
-
-    for (;;)
-    {
-        if ((err = ugb_cpu_step(gbm->cpu, &cycles)) != UGB_ERR_OK ||
-            (err = ugb_gpu_step(gbm->gpu, cycles)))
-            goto fail;
-    }
 
     /***************/
     /*** Cleanup ***/
@@ -123,8 +169,4 @@ int main(int argc, char** argv)
 
     ugb_gbm_destroy(gbm);
     return 0;
-
-fail:
-    printf("Error: %s\n", ugb_strerror(err));
-    return -1;
 }

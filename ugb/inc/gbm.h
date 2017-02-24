@@ -16,9 +16,14 @@ typedef struct ugb_gbm
     struct ugb_mmu* mmu;
     struct ugb_hwio* hwio;
     struct ugb_gpu* gpu;
+
+    int (*video_out)(struct ugb_gbm*, uint8_t*);
 } ugb_gbm;
 
 ugb_gbm* ugb_gbm_create();
 void ugb_gbm_destroy(ugb_gbm* gbm);
+
+int ugb_gbm_step(ugb_gbm* gbm);
+int ugb_gbm_reset(ugb_gbm* gbm);
 
 #endif // __UGB_GBM_H__

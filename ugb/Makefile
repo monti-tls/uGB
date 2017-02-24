@@ -23,7 +23,7 @@ RM = rm
 CC_FLAGS  = -std=c99 -Wall
 debug: CC_FLAGS += -g -ggdb -O0
 release: CC_FLAGS += -O3 -fomit-frame-pointer
-LD_FLAGS = -lreadline
+LD_FLAGS = -lreadline -lpthread -lSDL2
 
 ### Files
 

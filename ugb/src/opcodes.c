@@ -187,6 +187,8 @@ static void __attribute__((constructor)) _ugb_opcodes_init()
 // Swap nibbles
 #define swap(x) ((((x) >> 4) & 0xF) | (((x) << 4) & 0xF0))
 
+/*** Non-resetting versions ***/
+/*
 // Set F.Z flag if x is zero
 #define _Z(x) do { uint16_t x_ = (x); if (!x_) F |= UGB_REG_F_Z_MSK; } while (0);
 // Assign F.Z flag
@@ -205,6 +207,27 @@ static void __attribute__((constructor)) _ugb_opcodes_init()
 #define _Cs(y) do { uint16_t y_ = (y); if (y_ != 0) F |= UGB_REG_F_C_MSK; } while (0);
 // Assign F.C flag
 #define _Ca(y) do { uint16_t y_ = (y); if (y_ != 0) F |= UGB_REG_F_C_MSK; else F &= ~UGB_REG_F_C_MSK; } while (0);
+*/
+
+// Set F.Z flag if x is zero
+#define _Z(x) do { uint16_t x_ = (x); if (!x_) F |= UGB_REG_F_Z_MSK; else F &= ~UGB_REG_F_Z_MSK; } while (0);
+// Assign F.Z flag
+#define _Za(x) do { uint16_t x_ = (x); if (!x_) F |= UGB_REG_F_Z_MSK; else F &= ~UGB_REG_F_Z_MSK; } while (0);
+// Set F.H flag if half carry from bit 3
+#define _H3(o, n) do { uint16_t o_ = (o); uint16_t n_ = (n); if (((n_ & 0xF) - (o_ & 0xF)) < 0) F |= UGB_REG_F_H_MSK; else F &= ~UGB_REG_F_H_MSK; } while (0);
+// Set F.H flag if half carry from bit 11
+#define _H11(o, n) _H3(((o) >> 8), ((n) >> 8))
+// Set F.C flag if carry from bit 15
+#define _C15(o, n) do { uint16_t o_ = (o); uint16_t n_ = (n); if (n_ - o_ < 0) F |= UGB_REG_F_C_MSK; else F &= ~UGB_REG_F_C_MSK; } while (0);
+// Set F.H flag if half carry from bit 11 and F.C flag if carry from bit 15
+#define _C15H11(o, n) do { uint16_t o2_ = (o); uint16_t n2_ = (n); _C15(o2_, n2_); _H11(o2_, n2_); } while (0);
+// Set F.H flag if half carry from bit 11 and F.C flag if carry from bit 15, set F.Z flag if n zero
+#define _ZC15H11(o, n) do { uint16_t n3_ = (n); _C15H11((o), n3_); _Z(n3_); } while (0);
+// Set F.C flag if y != 0
+#define _Cs(y) do { uint16_t y_ = (y); if (y_ != 0) F |= UGB_REG_F_C_MSK; else F &= ~UGB_REG_F_C_MSK; } while (0);
+// Assign F.C flag
+#define _Ca(y) do { uint16_t y_ = (y); if (y_ != 0) F |= UGB_REG_F_C_MSK; else F &= ~UGB_REG_F_C_MSK; } while (0);
+
 
 // F flags shorcuts
 #define _fZ ((F & UGB_REG_F_Z_MSK) >> UGB_REG_F_Z_BIT)
