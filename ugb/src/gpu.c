@@ -83,12 +83,13 @@ static int _render_scanline(ugb_gpu* gpu)
         bg_map_ram_base = 0x1800;
 
     // Build background palette cache
+    uint8_t g2rgb332[4] = { 0x00, 0x49, 0x92, 0xFF };
     uint8_t palette[4] =
     {
-        ((hwio_bgp >> 0) & 0x3) * 0x55,
-        ((hwio_bgp >> 2) & 0x3) * 0x55,
-        ((hwio_bgp >> 3) & 0x3) * 0x55,
-        ((hwio_bgp >> 4) & 0x3) * 0x55
+        g2rgb332[(hwio_bgp >> 0) & 0x3],
+        g2rgb332[(hwio_bgp >> 2) & 0x3],
+        g2rgb332[(hwio_bgp >> 3) & 0x3],
+        g2rgb332[(hwio_bgp >> 4) & 0x3]
     };
 
     // Go to the current BG MAP line
@@ -121,8 +122,9 @@ static int _render_scanline(ugb_gpu* gpu)
         tile_data += (2 * y);
 
         // Extract the current pixel
-        uint8_t pixel = (((tile_data[1] & (0x01 << x)) >> x) << 1);
-        pixel |= (tile_data[0] & (0x01 << x)) >> x;
+        int b = 7-x;
+        uint8_t pixel = (((tile_data[1] & (0x01 << b)) >> b) << 1);
+        pixel |= (tile_data[0] & (0x01 << b)) >> b;
 
         // Run it through the palette and render it to the screen
         gpu->framebuf[line * UGB_GPU_SCREEN_W + i] = palette[pixel];
