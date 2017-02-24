@@ -18,6 +18,9 @@ typedef struct ugb_hwreg
     uint8_t rmask;
     uint8_t umask;
     uint8_t reset;
+
+    int(*hook)(struct ugb_hwreg*, void*);
+    void* cookie;
 } ugb_hwreg;
 
 typedef struct ugb_hwio
@@ -32,6 +35,8 @@ ugb_hwio* ugb_hwio_create(ugb_gbm* gbm);
 void ugb_hwio_destroy(ugb_hwio* hwio);
 
 int ugb_hwio_reset(ugb_hwio* hwio);
+int ugb_hwio_set_hook(ugb_hwio* hwio, uint8_t id, int(*hook)(ugb_hwreg*, void*), void* cookie);
+
 int ugb_hwio_mmu_handler(void* cookie, int op, uint16_t offset, uint8_t* data);
 
 #endif // __UGB_HWIO_H__

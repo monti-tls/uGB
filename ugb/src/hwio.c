@@ -41,7 +41,18 @@ int ugb_hwio_reset(ugb_hwio* hwio)
     for (int i = 0; i < UGB_HWIO_REG_SIZE; ++i)
         hwio->data[i] = hwio->regs[i].reset;
 
-    return 0;
+    return UGB_ERR_OK;
+}
+
+int ugb_hwio_set_hook(ugb_hwio* hwio, uint8_t id, int(*hook)(ugb_hwreg*, void*), void* cookie)
+{
+    if (!hwio || id > UGB_HWIO_REG_SIZE || !hwio->regs[id].name)
+        return UGB_ERR_BADARGS;
+
+    hwio->regs[id].hook = hook;
+    hwio->regs[id].cookie = cookie;
+
+    return UGB_ERR_OK;
 }
 
 int ugb_hwio_mmu_handler(void* cookie, int op, uint16_t offset, uint8_t* data)
@@ -65,7 +76,10 @@ int ugb_hwio_mmu_handler(void* cookie, int op, uint16_t offset, uint8_t* data)
 
         case UGB_MMU_WRITE:
         {
-            //TODO: handle writes
+            hwio->data[offset] = ((*data) & reg->wmask) & (~reg->umask);
+
+            if (reg->hook)
+                (*reg->hook)(reg, reg->cookie);
             break;
         }
     }

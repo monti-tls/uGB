@@ -82,7 +82,8 @@ static int _render_scanline(ugb_gpu* gpu)
     else
         bg_map_ram_base = 0x1800;
 
-    // Build background palette cache
+    // Build background palette cache, we store the framebuffer
+    //  in the RGB332 format
     uint8_t g2rgb332[4] = { 0x00, 0x49, 0x92, 0xFF };
     uint8_t palette[4] =
     {

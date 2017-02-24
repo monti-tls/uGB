@@ -7,6 +7,7 @@
 
 enum
 {
+    UGB_MMU_NONE,
     UGB_MMU_DATA,
     UGB_MMU_RODATA,
     UGB_MMU_SOFT
@@ -51,8 +52,11 @@ typedef struct ugb_mmu
 ugb_mmu* ugb_mmu_create(ugb_gbm* gbm);
 void ugb_mmu_destroy(ugb_mmu* mmu);
 
+ugb_mmu_map* ugb_mmu_map_create(uint16_t low_addr, uint16_t high_addr);
+
 int ugb_mmu_add_map(ugb_mmu* mmu, ugb_mmu_map* map);
 int ugb_mmu_remove_map(ugb_mmu* mmu, ugb_mmu_map* map);
+int ugb_mmu_clear_maps(ugb_mmu* mmu);
 ugb_mmu_map* ugb_mmu_resolve_map(ugb_mmu* mmu, uint16_t addr);
 
 int ugb_mmu_read(ugb_mmu* mmu, uint16_t addr, uint8_t* data);

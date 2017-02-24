@@ -135,7 +135,7 @@ ssize_t ugb_cpu_step(ugb_cpu* cpu, size_t* cycles)
     return UGB_ERR_OK;
 }
 
-int ugb_cpu_ie_reg_mmu_handler(void* cookie, int op, uint16_t offset, uint8_t* data)
+int ugb_cpu_iereg_mmu_handler(void* cookie, int op, uint16_t offset, uint8_t* data)
 {
     if (!cookie || !data || offset != 0)
         return UGB_ERR_BADARGS;

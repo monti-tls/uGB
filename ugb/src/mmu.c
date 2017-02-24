@@ -34,16 +34,23 @@ void ugb_mmu_destroy(ugb_mmu* mmu)
     }
 }
 
+ugb_mmu_map* ugb_mmu_map_create(uint16_t low_addr, uint16_t high_addr)
+{
+    ugb_mmu_map* map = malloc(sizeof(ugb_mmu_map));
+    if (!map)
+        return 0;
+
+    map->low_addr = low_addr;
+    map->high_addr = high_addr;
+    map->type = UGB_MMU_NONE;
+
+    return map;
+}
+
 int ugb_mmu_add_map(ugb_mmu* mmu, ugb_mmu_map* map)
 {
     if (!mmu || !map || !map->target_ptr)
         return UGB_ERR_BADARGS;
-
-    for (ugb_mmu_map* other = mmu->maps; other; other = other->next)
-    {
-        if (map->low_addr >= other->low_addr && map->high_addr <= other->high_addr)
-            return UGB_ERR_MMU_CLASH;
-    }
 
     map->prev = mmu->last_map;
     map->next = 0;
@@ -82,7 +89,7 @@ ugb_mmu_map* ugb_mmu_resolve_map(ugb_mmu* mmu, uint16_t addr)
         return 0;
 
     for (ugb_mmu_map* map = mmu->maps; map; map = map->next)
-        if (addr >= map->low_addr && addr <= map->high_addr)
+        if (map->type != UGB_MMU_NONE && addr >= map->low_addr && addr <= map->high_addr)
             return map;
 
     return 0;
@@ -95,7 +102,10 @@ int ugb_mmu_read(ugb_mmu* mmu, uint16_t addr, uint8_t* data)
 
     ugb_mmu_map* map = ugb_mmu_resolve_map(mmu, addr);
     if (!map)
+    {
+        printf("Bad read at 0x%04X\n", addr);
         return UGB_ERR_MMU_MAP;
+    }
 
     switch (map->type)
     {
@@ -124,7 +134,10 @@ int ugb_mmu_write(ugb_mmu* mmu, uint16_t addr, uint8_t data)
 
     ugb_mmu_map* map = ugb_mmu_resolve_map(mmu, addr);
     if (!map)
+    {
+        printf("Bad write at 0x%04X\n", addr);
         return UGB_ERR_MMU_MAP;
+    }
 
     switch (map->type)
     {
@@ -133,6 +146,7 @@ int ugb_mmu_write(ugb_mmu* mmu, uint16_t addr, uint8_t data)
             break;
 
         case UGB_MMU_RODATA:
+            printf("Writing to RO at 0x%04X\n", addr);
             return UGB_ERR_MMU_RO;
 
         case UGB_MMU_SOFT:
