@@ -2,6 +2,7 @@
 #include "mmu.h"
 #include "hwio.h"
 #include "gpu.h"
+#include "timer.h"
 #include "constants.h"
 #include "errno.h"
 
@@ -23,7 +24,8 @@ ugb_gbm* ugb_gbm_create()
     if (!(gbm->cpu = ugb_cpu_create(gbm)) ||
         !(gbm->hwio = ugb_hwio_create(gbm)) ||
         !(gbm->gpu = ugb_gpu_create(gbm)) ||
-        !(gbm->mmu = ugb_mmu_create(gbm)))
+        !(gbm->mmu = ugb_mmu_create(gbm)) ||
+        !(gbm->timer = ugb_timer_create(gbm)))
     {
         goto fail;
     }
@@ -118,6 +120,7 @@ void ugb_gbm_destroy(ugb_gbm* gbm)
         free(gbm->mem.ram0);
 
         ugb_mmu_destroy(gbm->mmu);
+        ugb_timer_destroy(gbm->timer);
         ugb_gpu_destroy(gbm->gpu);
         ugb_hwio_destroy(gbm->hwio);
         ugb_cpu_destroy(gbm->cpu);
@@ -135,7 +138,8 @@ int ugb_gbm_step(ugb_gbm* gbm)
     size_t cycles;
 
     if ((err = ugb_cpu_step(gbm->cpu, &cycles)) != UGB_ERR_OK ||
-        (err = ugb_gpu_step(gbm->gpu, cycles)) != UGB_ERR_OK)
+        (err = ugb_gpu_step(gbm->gpu, cycles)) != UGB_ERR_OK ||
+        (err = ugb_timer_step(gbm->timer, cycles)) != UGB_ERR_OK)
         return err;
 
     return UGB_ERR_OK;
@@ -153,6 +157,7 @@ int ugb_gbm_reset(ugb_gbm* gbm)
     int err;
     if ((err = ugb_cpu_reset(gbm->cpu)) != UGB_ERR_OK ||
         (err = ugb_gpu_reset(gbm->gpu)) != UGB_ERR_OK ||
+        (err = ugb_timer_reset(gbm->timer)) != UGB_ERR_OK ||
         (err = ugb_hwio_reset(gbm->hwio)) != UGB_ERR_OK)
         return err;
 
@@ -166,7 +171,7 @@ int ugb_gbm_bdreg_hook(struct ugb_hwreg* reg, void* cookie)
 
     ugb_gbm* gbm = (ugb_gbm*) cookie;
 
-    // Remove the BIOS ROM mapping so the 0000 -> 00FF zone is
+    // Disable the BIOS ROM mapping so the 0000 -> 00FF zone is
     //   accessible on the cartridge's ROM0
     gbm->mem.bios_map->type = UGB_MMU_NONE;
 

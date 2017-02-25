@@ -63,7 +63,7 @@ ssize_t ugb_cpu_step(ugb_cpu* cpu, size_t* cycles)
             // If interrupt is pending and unmasked
             if ((*cpu->regs.IE & (0x01 << i)) && (*hwreg_if & (0x01 << i)))
             {
-                // Reset interrupt flag
+                // Reset pending interrupt register
                 *hwreg_if = 0;
 
                 // Reset IME flag

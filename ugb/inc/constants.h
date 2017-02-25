@@ -8,9 +8,14 @@
 #define UGB_GPU_MODE10_CLOCKS 80
 #define UGB_GPU_MODE11_CLOCKS 172
 
-#define UGB_GPU_SCREEN_W  160
-#define UGB_GPU_SCREEN_H  144
-#define UGB_GPU_SCREEN_VH 154
+#define UGB_GPU_SCREEN_W      160
+#define UGB_GPU_SCREEN_H      144
+#define UGB_GPU_SCREEN_VH     154
+
+#define UGB_TIMER_DIV00       1024
+#define UGB_TIMER_DIV01       16
+#define UGB_TIMER_DIV10       64
+#define UGB_TIMER_DIV11       256
 
 #define UGB_BIOS_LO      0x0000
 #define UGB_BIOS_HI      0x00FF

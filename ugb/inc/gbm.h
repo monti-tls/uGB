@@ -10,12 +10,14 @@ struct ugb_mmu_map;
 struct ugb_hwio;
 struct ugb_hwreg;
 struct ugb_gpu;
+struct ugb_timer;
 
 typedef struct ugb_gbm
 {
     struct ugb_cpu* cpu;
     struct ugb_hwio* hwio;
     struct ugb_gpu* gpu;
+    struct ugb_timer* timer;
 
     struct ugb_mmu* mmu;
 
