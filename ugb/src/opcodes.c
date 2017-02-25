@@ -169,79 +169,36 @@ static void __attribute__((constructor)) _ugb_opcodes_init()
 #define d16 (*((uint16_t*) &imm[0]))
 #define a16 (*((uint16_t*) &imm[0]))
 
-// Memory read
-#define r(addr, data) do { if ((err = ugb_mmu_read(cpu->gbm->mmu, (addr), (data))) < 0) return err; } while (0);
-// Memory write
-#define w(addr, data) do { if ((err = ugb_mmu_write(cpu->gbm->mmu, (addr), (data))) < 0) return err; } while (0);
-
-// Rotate left x
-#define rol8(x) ((x) >> 7) | ((x) << 1)
-// Rotate right x
-#define ror8(x) ((x) << 7) | ((x) >> 1)
-// Shift left x, bit 0 is 0
-#define sl8(x) (((x) << 1) & ~0x01)
-// Shift right x, copy bit 7
-#define sr8c(x) (((x) >> 1) | ((x) & 0x80))
-// Shift right, bit 7 is 0
-#define sr8(x) (((x) >> 1) & ~0x80)
-// Swap nibbles
-#define swap(x) ((((x) >> 4) & 0xF) | (((x) << 4) & 0xF0))
-
-/*** Non-resetting versions ***/
-/*
-// Set F.Z flag if x is zero
-// #define _Z(x) do { uint16_t x_ = (x); if (!x_) F |= UGB_REG_F_Z_MSK; } while (0);
-// Assign F.Z flag
-// #define _Za(x) do { uint16_t x_ = (x); if (!x_) F |= UGB_REG_F_Z_MSK; else F &= ~UGB_REG_F_Z_MSK; } while (0);
-// Set F.H flag if half carry from bit 3
-#define _H3(o, n) do { uint16_t o_ = (o); uint16_t n_ = (n); if (((n_ & 0xF) - (o_ & 0xF)) < 0) F |= UGB_REG_F_H_MSK; } while (0);
-// Set F.H flag if half carry from bit 11
-#define _H11(o, n) _H3(((o) >> 8), ((n) >> 8))
-// Set F.C flag if carry from bit 15
-#define _C15(o, n) do { uint16_t o_ = (o); uint16_t n_ = (n); if (n_ - o_ < 0) F |= UGB_REG_F_C_MSK; } while (0);
-// Set F.H flag if half carry from bit 11 and F.C flag if carry from bit 15
-#define _C15H11(o, n) do { uint16_t o2_ = (o); uint16_t n2_ = (n); _C15(o2_, n2_); _H11(o2_, n2_); } while (0);
-// Set F.H flag if half carry from bit 11 and F.C flag if carry from bit 15, set F.Z flag if n zero
-#define _ZC15H11(o, n) do { uint16_t n3_ = (n); _C15H11((o), n3_); _Z(n3_); } while (0);
-// Set F.C flag if y != 0
-#define _Cs(y) do { uint16_t y_ = (y); if (y_ != 0) F |= UGB_REG_F_C_MSK; } while (0);
-// Assign F.C flag
-#define _Ca(y) do { uint16_t y_ = (y); if (y_ != 0) F |= UGB_REG_F_C_MSK; else F &= ~UGB_REG_F_C_MSK; } while (0);
-*/
-
-// Set F.Z flag if x is zero
-#define _Z(x) do { uint16_t x_ = (x); if (!x_) F |= UGB_REG_F_Z_MSK; else F &= ~UGB_REG_F_Z_MSK; } while (0);
-
-// Assign F.Z flag
-#define _Za(x) do { uint16_t x_ = (x); if (!x_) F |= UGB_REG_F_Z_MSK; else F &= ~UGB_REG_F_Z_MSK; } while (0);
-
-// Set F.H flag if half carry from bit 3
-#define _H3(o, n) do { uint16_t o_ = (o); uint16_t n_ = (n); if (((n_ & 0xF) - (o_ & 0xF)) < 0) F |= UGB_REG_F_H_MSK; else F &= ~UGB_REG_F_H_MSK; } while (0);
-
-// Set F.H flag if half carry from bit 11
-#define _H11(o, n) _H3(((o) >> 8), ((n) >> 8))
-
-// Set F.C flag if carry from bit 15
-#define _C15(o, n) do { uint16_t o_ = (o); uint16_t n_ = (n); if (n_ - o_ < 0) F |= UGB_REG_F_C_MSK; else F &= ~UGB_REG_F_C_MSK; } while (0);
-
-// Set F.H flag if half carry from bit 11 and F.C flag if carry from bit 15
-#define _C15H11(o, n) do { uint16_t o2_ = (o); uint16_t n2_ = (n); _C15(o2_, n2_); _H11(o2_, n2_); } while (0);
-
-// Set F.H flag if half carry from bit 11 and F.C flag if carry from bit 15, set F.Z flag if n zero
-#define _ZC15H11(o, n) do { uint16_t n3_ = (n); _C15H11((o), n3_); _Z(n3_); } while (0);
-
-// Set F.C flag if y != 0
-#define _Cs(y) do { uint16_t y_ = (y); if (y_ != 0) F |= UGB_REG_F_C_MSK; else F &= ~UGB_REG_F_C_MSK; } while (0);
-
-// Assign F.C flag
-#define _Ca(y) do { uint16_t y_ = (y); if (y_ != 0) F |= UGB_REG_F_C_MSK; else F &= ~UGB_REG_F_C_MSK; } while (0);
-
-
 // F flags shorcuts
 #define _fZ ((F & UGB_REG_F_Z_MSK) >> UGB_REG_F_Z_BIT)
 #define _fN ((F & UGB_REG_F_N_MSK) >> UGB_REG_F_N_BIT)
 #define _fH ((F & UGB_REG_F_H_MSK) >> UGB_REG_F_H_BIT)
 #define _fC ((F & UGB_REG_F_C_MSK) >> UGB_REG_F_C_BIT)
+
+// Memory read
+#define r(addr, data) do { if ((err = ugb_mmu_read(cpu->gbm->mmu, (addr), (data))) < 0) return err; } while (0);
+// Memory write
+#define w(addr, data) do { if ((err = ugb_mmu_write(cpu->gbm->mmu, (addr), (data))) < 0) return err; } while (0);
+
+#define _Za(x) do { \
+    if (x) F |= UGB_REG_F_Z_MSK; \
+    else   F &= ~UGB_REG_F_Z_MSK; \
+} while (0);
+
+#define _Ha(x) do { \
+    if (x) F |= UGB_REG_F_H_MSK; \
+    else   F &= ~UGB_REG_F_H_MSK; \
+} while (0);
+
+#define _Ca(x) do { \
+    if (x) F |= UGB_REG_F_C_MSK; \
+    else   F &= ~UGB_REG_F_C_MSK; \
+} while (0);
+
+#define _Zv(x) do { \
+    if (!(x)) F |= UGB_REG_F_Z_MSK; \
+    else      F &= ~UGB_REG_F_Z_MSK; \
+} while (0);
 
 // Conditionals
 #define _IF(cond, code, overhead) do { if ((cond)) { code; _cycles += (overhead); } } while (0);
@@ -252,7 +209,7 @@ static void __attribute__((constructor)) _ugb_opcodes_init()
 
 static void _ugb_opcode_update_flags(ugb_cpu* cpu, char flags[])
 {
-    static uint16_t msk[4] = {
+    static uint8_t msk[4] = {
         UGB_REG_F_Z_MSK,
         UGB_REG_F_N_MSK,
         UGB_REG_F_H_MSK,
@@ -264,6 +221,8 @@ static void _ugb_opcode_update_flags(ugb_cpu* cpu, char flags[])
         if (flags[i] == '0') F &= ~msk[i];
         else if (flags[i] == '1') F |= msk[i];
     }
+
+    F &= 0xF0;
 }
 
 #define DEF_OPCODE(prefix, opcode, size, cycles, flags, mnemonic, microcode)\
@@ -271,7 +230,11 @@ int _ugb_opcode ## prefix ## opcode(ugb_cpu* cpu, uint8_t imm[], size_t* cycles_
 { \
     int __attribute__((unused)) err = 0; \
     uint8_t __attribute__((unused)) t8 = 0; \
+    uint8_t __attribute__((unused)) t8_ = 0; \
     uint16_t __attribute__((unused)) t16 = 0; \
+    uint16_t __attribute__((unused)) t16_ = 0; \
+    uint16_t __attribute__((unused)) v16_ = 0; \
+    uint32_t __attribute__((unused)) t32_ = 0; \
     size_t _cycles = cycles; \
     microcode; \
     if (cycles_counter) *cycles_counter = _cycles; \

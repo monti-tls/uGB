@@ -18,15 +18,15 @@
 #include "errno.h"
 
 #include "rom/01_special.h"
+#include "rom/02_interrupts.h"
 #include "rom/03_op_sp_hl.h"
 #include "rom/04_op_r_imm.h"
+#include "rom/05_op_rp.h"
 #include "rom/07_jr_jp_call_ret_rst.h"
 #include "rom/08_misc.h"
 #include "rom/09_op_r_r.h"
 #include "rom/10_bit_ops.h"
 #include "rom/cpu_instrs.h"
-
-#include "rom/tetris.h"
 
 uint8_t carthdr_data[] =
 {
@@ -104,9 +104,9 @@ int main(int argc, char** argv)
     // Add the cartridge map
     ugb_mmu_map* rom0 = malloc(sizeof(ugb_mmu_map));
     rom0->low_addr = UGB_CART_ROM0_LO;
-    rom0->high_addr = UGB_CART_ROM0_LO + sizeof(ugb_rom_01_special) - 1; //0x7FFF;
+    rom0->high_addr = UGB_CART_ROM0_LO + sizeof(ugb_rom_05_op_rp) - 1; //0x7FFF;
     rom0->type = UGB_MMU_DATA;
-    rom0->data = &ugb_rom_01_special[0];
+    rom0->data = &ugb_rom_05_op_rp[0];
     ugb_mmu_add_map(gbm->mmu, rom0);
 
     // Map RAM1
