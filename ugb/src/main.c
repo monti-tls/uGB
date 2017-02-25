@@ -106,9 +106,9 @@ int main(int argc, char** argv)
     // Add the cartridge map
     ugb_mmu_map* rom0 = malloc(sizeof(ugb_mmu_map));
     rom0->low_addr = UGB_CART_ROM0_LO;
-    rom0->high_addr = UGB_CART_ROM0_LO + sizeof(ugb_rom_04_op_r_imm) - 1; //0x7FFF;
+    rom0->high_addr = UGB_CART_ROM0_LO + sizeof(ugb_rom_02_interrupts) - 1; //0x7FFF;
     rom0->type = UGB_MMU_DATA;
-    rom0->data = &ugb_rom_04_op_r_imm[0];
+    rom0->data = &ugb_rom_02_interrupts[0];
     ugb_mmu_add_map(gbm->mmu, rom0);
 
     // Map RAM1
