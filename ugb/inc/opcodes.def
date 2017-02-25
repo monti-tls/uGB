@@ -206,13 +206,8 @@ DEF_OPCODE(, 23, 1, 8,  "____", "INC HL",       ++HL;                         ) 
 DEF_OPCODE(, 24, 1, 4,  "Z0H_", "INC H",        INC(H);                       ) // OK
 DEF_OPCODE(, 25, 1, 4,  "Z1H_", "DEC H",        DEC(H);                       ) // OK
 DEF_OPCODE(, 26, 2, 8,  "____", "LD H, d8",     H = d8;                       ) // OK
-DEF_OPCODE(, 27, 1, 4,  "Z_0C", "DAA",          if (_fN) { \
-                                                    if (_fH) { A = (A-0x06) & 0xFF; } \
-                                                    if (_fC) { A -= 0x60; } } \
-                                                else { \
-                                                    if (_fH || (A & 0xF) > 9) { A += 0x06; } \
-                                                    if (_fC || A > 0x9F) { A += 0x60; } } \
-                                                _Zv(A); _Ca(A >= 0x100);      ) // ??????
+DEF_OPCODE(, 27, 1, 4,  "Z_0C", "DAA",          t16 = A | ((F & ~UGB_REG_F_Z_MSK) << 4); \
+                                                AF = mednafen_daa_lookup[t16];     ) // OK
 DEF_OPCODE(, 28, 2, 8,  "____", "JR Z, PCr8",   _IF(_fZ, PC += r8, 4);        ) // OK
 DEF_OPCODE(, 29, 1, 8,  "_0HC", "ADD HL, HL",   ADD16(&HL, HL);               ) // OK
 DEF_OPCODE(, 2A, 1, 8,  "____", "LD A, (HL+)",  r(HL++, &A);                  ) // OK

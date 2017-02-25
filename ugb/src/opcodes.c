@@ -207,6 +207,8 @@ static void __attribute__((constructor)) _ugb_opcodes_init()
 #define _EI() do { IE |= UGB_REG_IE_IME_MSK; } while (0);
 #define _DI() do { IE &= ~UGB_REG_IE_IME_MSK; } while (0);
 
+extern uint16_t mednafen_daa_lookup[];
+
 static void _ugb_opcode_update_flags(ugb_cpu* cpu, char flags[])
 {
     static uint8_t msk[4] = {
