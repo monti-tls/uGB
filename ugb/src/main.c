@@ -4,6 +4,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include <SDL2/SDL.h>
 
@@ -100,15 +104,33 @@ int sb_hook(ugb_hwreg* reg, void* cookie)
 
 int main(int argc, char** argv)
 {
+    if (argc < 2)
+    {
+        printf("Usage: '%s <rom>'.\n", argv[0]);
+        return 0;
+    }
+
+    // Get input file, map it
+    int fd = open(argv[1], O_RDONLY);
+    if (fd < 0)
+    {
+        printf("Unable to open \"%s\".\n", argv[1]);
+        return 0;
+    }
+
+    struct stat sb;
+    fstat(fd, &sb);
+    void* file = mmap(0, sb.st_size, PROT_WRITE, MAP_PRIVATE, fd, 0);
+
     // Create a fresh GameBoy
     ugb_gbm* gbm = ugb_gbm_create();
 
     // Add the cartridge map
     ugb_mmu_map* rom0 = malloc(sizeof(ugb_mmu_map));
     rom0->low_addr = UGB_CART_ROM0_LO;
-    rom0->high_addr = UGB_CART_ROM0_LO + sizeof(ugb_rom_02_interrupts) - 1; //0x7FFF;
+    rom0->high_addr = 0x7FFF;
     rom0->type = UGB_MMU_DATA;
-    rom0->data = &ugb_rom_02_interrupts[0];
+    rom0->data = file;
     ugb_mmu_add_map(gbm->mmu, rom0);
 
     // Map RAM1
@@ -149,6 +171,8 @@ int main(int argc, char** argv)
 
     // Cleanup
     ugb_gbm_destroy(gbm);
+    munmap(file, sb.st_size);
+    close(fd);
 
     return 0;
 }

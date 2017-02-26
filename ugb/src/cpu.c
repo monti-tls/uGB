@@ -23,6 +23,8 @@ ugb_cpu* ugb_cpu_create(ugb_gbm* gbm)
     #define DEF_REGW(name, value) cpu->regs.name = (uint16_t*) &cpu->regs.data[value];
     #include "cpu.def"
 
+    ugb_cpu_reset(cpu);
+
     return cpu;
 }
 
@@ -40,6 +42,9 @@ ssize_t ugb_cpu_reset(ugb_cpu* cpu)
         return UGB_ERR_BADARGS;
 
     memset(&cpu->regs.data[0], 0, UGB_REGS_SIZE);
+    cpu->state = UGB_CPU_RUNNING;
+    cpu->ei_delayed = 0;
+    cpu->repeat_next_byte = 0;
 
     return *cpu->regs.PC;
 }
@@ -51,82 +56,115 @@ ssize_t ugb_cpu_step(ugb_cpu* cpu, size_t* cycles)
     if (!cpu)
         return UGB_ERR_BADARGS;
 
-    // If enabled, process eventual interrupts
+    // When stopped, don't do anything
+    if (cpu->state == UGB_CPU_STOPPED)
+    {
+        if (cycles) *cycles += 4;
+        return UGB_ERR_OK;
+    }
+
+    // Alias to the memory-mapped IF register
+    uint8_t* hwreg_if = &cpu->gbm->hwio->data[UGB_HWIO_REG_IF];
+
+    // Exit HALT even if IME == 0
+    if (*hwreg_if & *cpu->regs.IE)
+        cpu->state = UGB_CPU_RUNNING;
+
+    // Process interrupts if IME == 1
     if (*cpu->regs.IE & UGB_REG_IE_IME_MSK)
     {
-        // Get the memory-mapped IF register
-        uint8_t* hwreg_if = &cpu->gbm->hwio->data[UGB_HWIO_REG_IF];
-
-        // Check interrupt flags by priority
-        for (int i = 0; i <= 4; ++i)
+        for (int line = 0; line < 5; ++line)
         {
-            // If interrupt is pending and unmasked
-            if ((*cpu->regs.IE & (0x01 << i)) && (*hwreg_if & (0x01 << i)))
+            if (!(*hwreg_if & *cpu->regs.IE & (0x01 << line)))
+                continue;
+
+            // Clear IME
+            *cpu->regs.IE &= ~UGB_REG_IE_IME_MSK;
+            cpu->ei_delayed = 0;
+
+            // Clear interrupt flag
+            *hwreg_if &= ~(0x01 << line);
+
+            // Push PC
+            uint8_t* PC = (uint8_t*) cpu->regs.PC;
+            if ((err = ugb_mmu_write(cpu->gbm->mmu, --(*cpu->regs.SP), PC[1])) != UGB_ERR_OK ||
+                (err = ugb_mmu_write(cpu->gbm->mmu, --(*cpu->regs.SP), PC[0])) != UGB_ERR_OK)
             {
-                // Reset pending interrupt register
-                *hwreg_if = 0;
-
-                // Reset IME flag
-                *cpu->regs.IE &= ~UGB_REG_IE_IME_MSK;
-
-                // Push PC
-                uint8_t* PC = (uint8_t*) cpu->regs.PC;
-                if ((err = ugb_mmu_write(cpu->gbm->mmu, (*cpu->regs.SP)-1, PC[1])) != UGB_ERR_OK ||
-                    (err = ugb_mmu_write(cpu->gbm->mmu, (*cpu->regs.SP)-2, PC[0])) != UGB_ERR_OK)
-                {
-                    return err;
-                }
-
-                *cpu->regs.SP -= 2;
-
-                // Jump to interrupt vector
-                *cpu->regs.PC = 0x0040 + i * 8;
+                return err;
             }
+
+            // Jump to interrupt vector
+            *cpu->regs.PC = 0x0040 + (line << 3);
+
+            // Only process one interrupt at a time
+            break;
         }
     }
 
-    // Fetch instruction opcode (TODO: handle CB prefix)
-    uint8_t op;
-    if ((err = ugb_mmu_read(cpu->gbm->mmu, *cpu->regs.PC, &op)) != UGB_ERR_OK)
-        return err;
+    // Process delayed EI instruction
+    if (cpu->ei_delayed)
+    {
+        *cpu->regs.IE |= UGB_REG_IE_IME_MSK;
+        cpu->ei_delayed = 0;
+    }
 
+    // If we're halted, do nothing until next step
+    if (cpu->state == UGB_CPU_HALTED)
+    {
+        if (cycles) *(cycles) += 4;
+        return UGB_ERR_OK;
+    }
+
+    // Decoded instruction will be placed here
     ugb_opcode* opcode = 0;
     uint8_t imm[4];
 
-    if (op == 0xCB)
+    // Fetch instruction opcode
+    uint8_t op;
+    if ((err = ugb_mmu_read(cpu->gbm->mmu, (*cpu->regs.PC)++, &op)) != UGB_ERR_OK)
+        return err;
+
+    // Handle HALT bug
+    if (cpu->repeat_next_byte)
     {
-        if ((err = ugb_mmu_read(cpu->gbm->mmu, *cpu->regs.PC + 1, &op)) != UGB_ERR_OK)
-            return err;
-
-        // Resolve the instruction
-        opcode = &ugb_opcodes_tableCB[op];
-        if (!opcode->microcode)
-            return UGB_ERR_BADOP;
-
-        // Get immediate operands if applicable
-        for (int i = 0; i < opcode->size - 2; ++i)
-        {
-            if ((err = ugb_mmu_read(cpu->gbm->mmu, *cpu->regs.PC + 2 + i, &imm[i])) != UGB_ERR_OK)
-                return err;
-        }
+        --(*cpu->regs.PC);
+        cpu->repeat_next_byte = 0;
     }
-    else
+
+    // Simple opcode
+    if (op != 0xCB)
     {
-        // Resolve the instruction
+        // Decode
         opcode = &ugb_opcodes_table[op];
         if (!opcode->microcode)
             return UGB_ERR_BADOP;
 
-        // Get immediate operands if applicable
+        // Get immediate data
         for (int i = 0; i < opcode->size - 1; ++i)
         {
-            if ((err = ugb_mmu_read(cpu->gbm->mmu, *cpu->regs.PC + 1 + i, &imm[i])) != UGB_ERR_OK)
+            if ((err = ugb_mmu_read(cpu->gbm->mmu, (*cpu->regs.PC)++, &imm[i])) != UGB_ERR_OK)
                 return err;
         }
     }
+    // Extended opcode
+    else
+    {
+        // Read actual prefixed opcode
+        if ((err = ugb_mmu_read(cpu->gbm->mmu, (*cpu->regs.PC)++, &op)) != UGB_ERR_OK)
+                return err;
 
-    // Advance PC
-    *cpu->regs.PC += opcode->size;
+        // Decode
+        opcode = &ugb_opcodes_tableCB[op];
+        if (!opcode->microcode)
+            return UGB_ERR_BADOP;
+
+        // Get immediate data
+        for (int i = 0; i < opcode->size - 2; ++i)
+        {
+            if ((err = ugb_mmu_read(cpu->gbm->mmu, (*cpu->regs.PC)++, &imm[i])) != UGB_ERR_OK)
+                return err;
+        }
+    }
 
     // Execute instruction
     if ((err = (*opcode->microcode)(cpu, imm, cycles)) != UGB_ERR_OK)

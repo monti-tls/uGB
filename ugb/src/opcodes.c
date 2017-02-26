@@ -1,6 +1,7 @@
 #include "cpu.h"
 #include "mmu.h"
 #include "opcodes.h"
+#include "hwio.h"
 #include "gbm.h"
 #include "errno.h"
 
@@ -204,8 +205,14 @@ static void __attribute__((constructor)) _ugb_opcodes_init()
 #define _IF(cond, code, overhead) do { if ((cond)) { code; _cycles += (overhead); } } while (0);
 
 // Interrupt masking
-#define _EI() do { IE |= UGB_REG_IE_IME_MSK; } while (0);
-#define _DI() do { IE &= ~UGB_REG_IE_IME_MSK; } while (0);
+#define _EI() do { \
+    cpu->ei_delayed = 1; \
+} while (0);
+
+#define _DI() do { \
+    cpu->ei_delayed = 0; \
+    IE &= ~UGB_REG_IE_IME_MSK; \
+} while (0);
 
 extern uint16_t mednafen_daa_lookup[];
 

@@ -1,5 +1,6 @@
 #include "gpu.h"
 #include "hwio.h"
+#include "cpu.h"
 #include "constants.h"
 #include "errno.h"
 
@@ -65,7 +66,6 @@ static int _render_scanline(ugb_gpu* gpu)
     // Get character RAM base and addressing mode
     uint16_t char_ram_base;
     int signed_mode;
-
     if (hwio_lcdc & (0x01 << 4))
     {
         char_ram_base = 0x0000;
@@ -79,21 +79,22 @@ static int _render_scanline(ugb_gpu* gpu)
 
     // Get BG MAP
     uint16_t bg_map_ram_base;
-
     if (hwio_lcdc & (0x01 << 3))
         bg_map_ram_base = 0x1C00;
     else
         bg_map_ram_base = 0x1800;
 
     // Build background palette cache, we store the framebuffer
-    //  in the RGB332 format
-    uint8_t g2rgb332[4] = { 0x00, 0x49, 0x92, 0xFF };
+    //   in the RGB332 format
+    // Invert color values (00 -> white, 11 -> black) because the LCD
+    //   appears white when OFF
+    uint8_t rgb332[4] = { 0xFF, 0x92, 0x49, 0x00 };
     uint8_t palette[4] =
     {
-        g2rgb332[(hwio_bgp >> 0) & 0x3],
-        g2rgb332[(hwio_bgp >> 2) & 0x3],
-        g2rgb332[(hwio_bgp >> 4) & 0x3],
-        g2rgb332[(hwio_bgp >> 6) & 0x3]
+        rgb332[(hwio_bgp >> 0) & 0x3],
+        rgb332[(hwio_bgp >> 2) & 0x3],
+        rgb332[(hwio_bgp >> 4) & 0x3],
+        rgb332[(hwio_bgp >> 6) & 0x3]
     };
 
     // Go to the current BG MAP line
@@ -145,6 +146,36 @@ static int _render_scanline(ugb_gpu* gpu)
     return UGB_ERR_OK;
 }
 
+static int _update_stat_irq(ugb_gpu* gpu)
+{
+    // Aliases to relevant HWIO registers
+    uint8_t hwreg_stat = gpu->gbm->hwio->data[UGB_HWIO_REG_STAT];
+    uint8_t hwreg_ly = gpu->gbm->hwio->data[UGB_HWIO_REG_LY];
+    uint8_t hwreg_lyc = gpu->gbm->hwio->data[UGB_HWIO_REG_LYC];
+    uint8_t* hwreg_if = &gpu->gbm->hwio->data[UGB_HWIO_REG_IF];
+
+    int old_irq = *hwreg_if & UGB_REG_IE_L_MSK;
+    int new_irq = 0;
+
+    int mode = hwreg_stat & 0x03;
+
+    if (hwreg_stat & (0x01 << 3))
+        new_irq = (mode == 0);
+    if (hwreg_stat & (0x01 << 4))
+        new_irq = (mode == 1);
+    if (hwreg_stat & (0x01 << 5))
+        new_irq = (mode == 2);
+    if (hwreg_stat & (0x01 << 6))
+        new_irq = (hwreg_ly == hwreg_lyc);
+
+    if (!old_irq && new_irq)
+    {
+        *hwreg_if |= UGB_REG_IE_L_MSK;
+    }
+
+    return UGB_ERR_OK;
+}
+
 int ugb_gpu_step(ugb_gpu* gpu, size_t cycles)
 {
     int err;
@@ -153,8 +184,15 @@ int ugb_gpu_step(ugb_gpu* gpu, size_t cycles)
         return UGB_ERR_BADARGS;
 
     // Aliases to relevant HWIO registers
+    uint8_t hwreg_lcdc = gpu->gbm->hwio->data[UGB_HWIO_REG_LCDC];
     uint8_t* hwreg_stat = &gpu->gbm->hwio->data[UGB_HWIO_REG_STAT];
     uint8_t* hwreg_ly = &gpu->gbm->hwio->data[UGB_HWIO_REG_LY];
+    uint8_t* hwreg_if = &gpu->gbm->hwio->data[UGB_HWIO_REG_IF];
+
+    // Return if not enabled
+    //TODO: clear screen first time
+    if (!(hwreg_lcdc & (0x01 << 7)))
+        return UGB_ERR_OK;
 
     // Get current mode
     int mode = *hwreg_stat & 0x3;
@@ -187,8 +225,11 @@ int ugb_gpu_step(ugb_gpu* gpu, size_t cycles)
 
             case 0: // HBlank
             {
-                if (++(*hwreg_ly) >= UGB_GPU_SCREEN_H-1)
+                if (++(*hwreg_ly) >= UGB_GPU_SCREEN_H)
                 {
+                    // Throw VBlank interrupt
+                    *hwreg_if |= UGB_REG_IE_V_MSK;
+
                     // After the last line, go to the VBlank mode
                     mode = 1;
 
@@ -215,6 +256,8 @@ int ugb_gpu_step(ugb_gpu* gpu, size_t cycles)
                 break;
             }
         }
+
+        _update_stat_irq(gpu);
     }
 
     // Update HWIO registers

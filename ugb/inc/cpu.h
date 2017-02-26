@@ -21,6 +21,13 @@ enum
     #include "cpu.def"
 };
 
+enum
+{
+    UGB_CPU_RUNNING,
+    UGB_CPU_HALTED,
+    UGB_CPU_STOPPED
+};
+
 typedef struct ugb_cpu
 {
     ugb_gbm* gbm;
@@ -33,6 +40,10 @@ typedef struct ugb_cpu
         #define DEF_REGW(name, value) uint16_t* name;
         #include "cpu.def"
     } regs;
+
+    int state;
+    int ei_delayed;
+    int repeat_next_byte;
 } ugb_cpu;
 
 ugb_cpu* ugb_cpu_create(ugb_gbm* gbm);

@@ -64,19 +64,24 @@ int ugb_hwio_mmu_handler(void* cookie, int op, uint16_t offset, uint8_t* data)
     ugb_hwreg* reg = offset < UGB_HWIO_REG_SIZE && hwio->regs[offset].name ? &hwio->regs[offset] : 0;
 
     if (!reg)
+    {
+        if (op == UGB_MMU_READ)
+            *data = 0xFF;
+
         return UGB_ERR_OK;
+    }
 
     switch (op)
     {
         case UGB_MMU_READ:
         {
-            *data = (hwio->data[offset] & reg->rmask) & (~reg->umask);
+            *data = (hwio->data[offset] & reg->rmask) | ~reg->rmask | reg->umask;
             break;
         }
 
         case UGB_MMU_WRITE:
         {
-            hwio->data[offset] = ((*data) & reg->wmask) & (~reg->umask);
+            hwio->data[offset] = (*data) & reg->wmask;
 
             if (reg->hook)
                 (*reg->hook)(reg, reg->cookie);

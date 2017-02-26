@@ -136,7 +136,7 @@ int ugb_mmu_write(ugb_mmu* mmu, uint16_t addr, uint8_t data)
     ugb_mmu_map* map = ugb_mmu_resolve_map(mmu, addr);
     if (!map)
     {
-        printf("Bad write at 0x%04X\n", addr);
+        printf("Bad write at 0x%04X.\n", addr);
         return UGB_ERR_MMU_MAP;
     }
 
@@ -147,7 +147,7 @@ int ugb_mmu_write(ugb_mmu* mmu, uint16_t addr, uint8_t data)
             break;
 
         case UGB_MMU_RODATA:
-            printf("Writing to RO at 0x%04X\n", addr);
+            printf("Writing to RO at 0x%04X.\n", addr);
             return UGB_ERR_MMU_RO;
 
         case UGB_MMU_SOFT:

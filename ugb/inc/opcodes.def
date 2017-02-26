@@ -165,6 +165,11 @@
     _Zv(*(r)); \
 } while (0);
 
+#define HALT() do { \
+    cpu->state = UGB_CPU_HALTED; \
+    if (!(IE & UGB_REG_IE_IME_MSK)) cpu->repeat_next_byte = 1; \
+} while (0);
+
 DEF_OPCODE(, 00, 1, 4,  "____", "NOP",          ;                             ) // OK
 DEF_OPCODE(, 01, 3, 12, "____", "LD BC, d16",   BC = d16;                     ) // OK
 DEF_OPCODE(, 02, 1, 8,  "____", "LD (BC), A",   w(BC, A);                     ) // OK
@@ -173,7 +178,7 @@ DEF_OPCODE(, 04, 1, 4,  "Z0H_", "INC B",        INC(B);                       ) 
 DEF_OPCODE(, 05, 1, 4,  "Z1H_", "DEC B",        DEC(B);                       ) // OK
 DEF_OPCODE(, 06, 2, 8,  "____", "LD B, d8",     B = d8;                       ) // OK
 DEF_OPCODE(, 07, 1, 4,  "000C", "RLCA",         RLC(&A);                      ) // OK
-DEF_OPCODE(, 08, 3, 20, "____", "LD (a16), SP", w(a16, SPl); w(a16+1, SPh);   ) // ??????
+DEF_OPCODE(, 08, 3, 20, "____", "LD (a16), SP", w(a16, SPl); w(a16+1, SPh);   ) // OK
 DEF_OPCODE(, 09, 1, 8,  "_0HC", "ADD HL, BC",   ADD16(&HL, BC);               ) // OK
 DEF_OPCODE(, 0A, 1, 8,  "____", "LD A, (BC)",   r(BC, &A);                    ) // OK
 DEF_OPCODE(, 0B, 1, 8,  "____", "DEC BC",       --BC;                         ) // OK
@@ -182,7 +187,7 @@ DEF_OPCODE(, 0D, 1, 4,  "Z1H_", "DEC C",        DEC(C);                       ) 
 DEF_OPCODE(, 0E, 2, 8,  "____", "LD C, d8",     C = d8;                       ) // OK
 DEF_OPCODE(, 0F, 1, 4,  "000C", "RRCA",         RRC(&A);                      ) // OK
 
-DEF_OPCODE(, 10, 2, 4,  "____", "STOP 0",       TODO;                         ) // TODO
+DEF_OPCODE(, 10, 2, 4,  "____", "STOP 0",       cpu->state = UGB_CPU_STOPPED; ) // OK
 DEF_OPCODE(, 11, 3, 12, "____", "LD DE, d16",   DE = d16;                     ) // OK
 DEF_OPCODE(, 12, 1, 8,  "____", "LD (DE), A",   w(DE, A);                     ) // OK
 DEF_OPCODE(, 13, 1, 8,  "____", "INC DE",       ++DE;                         ) // OK
@@ -207,7 +212,7 @@ DEF_OPCODE(, 24, 1, 4,  "Z0H_", "INC H",        INC(H);                       ) 
 DEF_OPCODE(, 25, 1, 4,  "Z1H_", "DEC H",        DEC(H);                       ) // OK
 DEF_OPCODE(, 26, 2, 8,  "____", "LD H, d8",     H = d8;                       ) // OK
 DEF_OPCODE(, 27, 1, 4,  "Z_0C", "DAA",          t16 = A | ((F & ~UGB_REG_F_Z_MSK) << 4); \
-                                                AF = mednafen_daa_lookup[t16];     ) // OK
+                                                AF = mednafen_daa_lookup[t16];) // OK
 DEF_OPCODE(, 28, 2, 8,  "____", "JR Z, PCr8",   _IF(_fZ, PC += r8, 4);        ) // OK
 DEF_OPCODE(, 29, 1, 8,  "_0HC", "ADD HL, HL",   ADD16(&HL, HL);               ) // OK
 DEF_OPCODE(, 2A, 1, 8,  "____", "LD A, (HL+)",  r(HL++, &A);                  ) // OK
@@ -293,7 +298,7 @@ DEF_OPCODE(, 72, 1, 8,  "____", "LD (HL), D",   w(HL, D);                     ) 
 DEF_OPCODE(, 73, 1, 8,  "____", "LD (HL), E",   w(HL, E);                     ) // OK
 DEF_OPCODE(, 74, 1, 8,  "____", "LD (HL), H",   w(HL, H);                     ) // OK
 DEF_OPCODE(, 75, 1, 8,  "____", "LD (HL), L",   w(HL, L);                     ) // OK
-DEF_OPCODE(, 76, 1, 4,  "____", "HALT",         TODO;                         ) // TODO
+DEF_OPCODE(, 76, 1, 4,  "____", "HALT",         HALT();                       ) // OK
 DEF_OPCODE(, 77, 1, 8,  "____", "LD (HL), A",   w(HL, A);                     ) // OK
 DEF_OPCODE(, 78, 1, 4,  "____", "LD A, B",      A = B;                        ) // OK
 DEF_OPCODE(, 79, 1, 4,  "____", "LD A, C",      A = C;                        ) // OK
@@ -301,8 +306,8 @@ DEF_OPCODE(, 7A, 1, 4,  "____", "LD A, D",      A = D;                        ) 
 DEF_OPCODE(, 7B, 1, 4,  "____", "LD A, E",      A = E;                        ) // OK
 DEF_OPCODE(, 7C, 1, 4,  "____", "LD A, H",      A = H;                        ) // OK
 DEF_OPCODE(, 7D, 1, 4,  "____", "LD A, L",      A = L;                        ) // OK
-DEF_OPCODE(, 7E, 1, 4,  "____", "LD A, (HL)",   r(HL, &A);                    ) // OK
-DEF_OPCODE(, 7F, 1, 8,  "____", "LD A, A",      A = A;                        ) // OK
+DEF_OPCODE(, 7E, 1, 8,  "____", "LD A, (HL)",   r(HL, &A);                    ) // OK
+DEF_OPCODE(, 7F, 1, 4,  "____", "LD A, A",      A = A;                        ) // OK
 
 DEF_OPCODE(, 80, 1, 4,  "Z0HC", "ADD A, B",     ADD(&A, B);                   ) // OK
 DEF_OPCODE(, 81, 1, 4,  "Z0HC", "ADD A, C",     ADD(&A, C);                   ) // OK
