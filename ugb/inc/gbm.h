@@ -29,6 +29,7 @@ struct ugb_hwio;
 struct ugb_hwreg;
 struct ugb_gpu;
 struct ugb_timer;
+struct ugb_joypad;
 
 typedef struct ugb_gbm
 {
@@ -36,6 +37,7 @@ typedef struct ugb_gbm
     struct ugb_hwio* hwio;
     struct ugb_gpu* gpu;
     struct ugb_timer* timer;
+    struct ugb_joypad* joypad;
 
     struct ugb_mmu* mmu;
 
@@ -50,8 +52,8 @@ typedef struct ugb_gbm
 ugb_gbm* ugb_gbm_create();
 void ugb_gbm_destroy(ugb_gbm* gbm);
 
-int ugb_gbm_step(ugb_gbm* gbm);
 int ugb_gbm_reset(ugb_gbm* gbm);
+int ugb_gbm_step(ugb_gbm* gbm, double* us);
 
 int ugb_gbm_bdreg_hook(struct ugb_hwreg* reg, void* cookie);
 

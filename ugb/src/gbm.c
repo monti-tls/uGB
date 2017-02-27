@@ -21,6 +21,7 @@
 #include "hwio.h"
 #include "gpu.h"
 #include "timer.h"
+#include "joypad.h"
 #include "constants.h"
 #include "errno.h"
 
@@ -43,7 +44,8 @@ ugb_gbm* ugb_gbm_create()
         !(gbm->hwio = ugb_hwio_create(gbm)) ||
         !(gbm->gpu = ugb_gpu_create(gbm)) ||
         !(gbm->mmu = ugb_mmu_create(gbm)) ||
-        !(gbm->timer = ugb_timer_create(gbm)))
+        !(gbm->timer = ugb_timer_create(gbm)) ||
+        !(gbm->joypad = ugb_joypad_create(gbm)))
     {
         goto fail;
     }
@@ -138,6 +140,7 @@ void ugb_gbm_destroy(ugb_gbm* gbm)
         free(gbm->mem.ram0);
 
         ugb_mmu_destroy(gbm->mmu);
+        ugb_joypad_destroy(gbm->joypad);
         ugb_timer_destroy(gbm->timer);
         ugb_gpu_destroy(gbm->gpu);
         ugb_hwio_destroy(gbm->hwio);
@@ -145,22 +148,6 @@ void ugb_gbm_destroy(ugb_gbm* gbm)
 
         free(gbm);
     }
-}
-
-int ugb_gbm_step(ugb_gbm* gbm)
-{
-    if (!gbm)
-        return UGB_ERR_BADARGS;
-
-    int err;
-    size_t cycles;
-
-    if ((err = ugb_cpu_step(gbm->cpu, &cycles)) != UGB_ERR_OK ||
-        (err = ugb_gpu_step(gbm->gpu, cycles)) != UGB_ERR_OK ||
-        (err = ugb_timer_step(gbm->timer, cycles)) != UGB_ERR_OK)
-        return err;
-
-    return UGB_ERR_OK;
 }
 
 int ugb_gbm_reset(ugb_gbm* gbm)
@@ -176,8 +163,29 @@ int ugb_gbm_reset(ugb_gbm* gbm)
     if ((err = ugb_cpu_reset(gbm->cpu)) != UGB_ERR_OK ||
         (err = ugb_gpu_reset(gbm->gpu)) != UGB_ERR_OK ||
         (err = ugb_timer_reset(gbm->timer)) != UGB_ERR_OK ||
+        (err = ugb_joypad_reset(gbm->joypad)) != UGB_ERR_OK ||
         (err = ugb_hwio_reset(gbm->hwio)) != UGB_ERR_OK)
         return err;
+
+    return UGB_ERR_OK;
+}
+
+int ugb_gbm_step(ugb_gbm* gbm, double* us)
+{
+    if (!gbm)
+        return UGB_ERR_BADARGS;
+
+    int err;
+    size_t cycles = 0;
+
+    if ((err = ugb_cpu_step(gbm->cpu, &cycles)) != UGB_ERR_OK ||
+        (err = ugb_gpu_step(gbm->gpu, cycles)) != UGB_ERR_OK ||
+        (err = ugb_timer_step(gbm->timer, cycles)) != UGB_ERR_OK ||
+        (err = ugb_joypad_step(gbm->joypad)) != UGB_ERR_OK)
+        return err;
+
+    if (us)
+        *us = (cycles * 1000000.0L) / UGB_CPU_CLOCK_FREQ;
 
     return UGB_ERR_OK;
 }

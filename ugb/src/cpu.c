@@ -77,7 +77,7 @@ ssize_t ugb_cpu_step(ugb_cpu* cpu, size_t* cycles)
     // When stopped, don't do anything
     if (cpu->state == UGB_CPU_STOPPED)
     {
-        if (cycles) *cycles += 4;
+        if (cycles) *cycles = 4;
         return UGB_ERR_OK;
     }
 
@@ -86,7 +86,11 @@ ssize_t ugb_cpu_step(ugb_cpu* cpu, size_t* cycles)
 
     // Exit HALT even if IME == 0
     if (*hwreg_if & *cpu->regs.IE)
+    {
+        if (cpu->state == UGB_CPU_HALTED)
+            printf("Waking up.\n");
         cpu->state = UGB_CPU_RUNNING;
+    }
 
     // Process interrupts if IME == 1
     if (*cpu->regs.IE & UGB_REG_IE_IME_MSK)
@@ -95,6 +99,14 @@ ssize_t ugb_cpu_step(ugb_cpu* cpu, size_t* cycles)
         {
             if (!(*hwreg_if & *cpu->regs.IE & (0x01 << line)))
                 continue;
+
+            const char* intname = 0;
+            if ((0x01 << line) & UGB_REG_IE_V_MSK) intname = "VBlank";
+            if ((0x01 << line) & UGB_REG_IE_L_MSK) intname = "LCD Stat";
+            // if ((0x01 << line) & UGB_REG_IE_T_MSK) intname = "Timer";
+            if ((0x01 << line) & UGB_REG_IE_X_MSK) intname = "Joypad";
+            if (intname)
+                printf("Interrupt #%d (%s)\n", line, intname);
 
             // Clear IME
             *cpu->regs.IE &= ~UGB_REG_IE_IME_MSK;
@@ -129,7 +141,7 @@ ssize_t ugb_cpu_step(ugb_cpu* cpu, size_t* cycles)
     // If we're halted, do nothing until next step
     if (cpu->state == UGB_CPU_HALTED)
     {
-        if (cycles) *(cycles) += 4;
+        if (cycles) *(cycles) = 4;
         return UGB_ERR_OK;
     }
 

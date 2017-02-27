@@ -205,7 +205,7 @@ DEF_OPCODE(, 0D, 1, 4,  "Z1H_", "DEC C",        DEC(C);                       ) 
 DEF_OPCODE(, 0E, 2, 8,  "____", "LD C, d8",     C = d8;                       ) // OK
 DEF_OPCODE(, 0F, 1, 4,  "000C", "RRCA",         RRC(&A);                      ) // OK
 
-DEF_OPCODE(, 10, 2, 4,  "____", "STOP 0",       cpu->state = UGB_CPU_STOPPED; ) // OK
+DEF_OPCODE(, 10, 2, 4,  "____", "STOP 0",       cpu->state = UGB_CPU_HALTED;  ) // OK
 DEF_OPCODE(, 11, 3, 12, "____", "LD DE, d16",   DE = d16;                     ) // OK
 DEF_OPCODE(, 12, 1, 8,  "____", "LD (DE), A",   w(DE, A);                     ) // OK
 DEF_OPCODE(, 13, 1, 8,  "____", "INC DE",       ++DE;                         ) // OK

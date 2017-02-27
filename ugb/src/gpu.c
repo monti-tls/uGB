@@ -47,6 +47,16 @@ ugb_gpu* ugb_gpu_create(ugb_gbm* gbm)
         return 0;
     }
 
+    memset(gpu->framebuf, 0, UGB_GPU_SCREEN_W * UGB_GPU_SCREEN_H);
+    memset(gpu->vram, 0, UGB_VRAM_SZ);
+    memset(gpu->oam, 0, UGB_OAM_SZ);
+
+    if (ugb_hwio_set_hook(gbm->hwio, UGB_HWIO_REG_LYC, &ugb_gpu_lyc_hook, (void*) gbm) != UGB_ERR_OK)
+    {
+        ugb_gpu_destroy(gpu);
+        return 0;
+    }
+
     return gpu;
 }
 
@@ -172,21 +182,19 @@ static int _update_stat_irq(ugb_gpu* gpu)
     uint8_t hwreg_lyc = gpu->gbm->hwio->data[UGB_HWIO_REG_LYC];
     uint8_t* hwreg_if = &gpu->gbm->hwio->data[UGB_HWIO_REG_IF];
 
-    int old_irq = *hwreg_if & UGB_REG_IE_L_MSK;
-    int new_irq = 0;
-
+    int irq = *hwreg_if & UGB_REG_IE_L_MSK;
     int mode = hwreg_stat & 0x03;
 
     if (hwreg_stat & (0x01 << 3))
-        new_irq = (mode == 0);
+        irq = (mode == 0);
     if (hwreg_stat & (0x01 << 4))
-        new_irq = (mode == 1);
+        irq = (mode == 1);
     if (hwreg_stat & (0x01 << 5))
-        new_irq = (mode == 2);
+        irq = (mode == 2);
     if (hwreg_stat & (0x01 << 6))
-        new_irq = (hwreg_ly == hwreg_lyc);
+        irq = (hwreg_ly == hwreg_lyc);
 
-    if (!old_irq && new_irq)
+    if (irq)
     {
         *hwreg_if |= UGB_REG_IE_L_MSK;
     }
@@ -205,21 +213,26 @@ int ugb_gpu_step(ugb_gpu* gpu, size_t cycles)
     uint8_t hwreg_lcdc = gpu->gbm->hwio->data[UGB_HWIO_REG_LCDC];
     uint8_t* hwreg_stat = &gpu->gbm->hwio->data[UGB_HWIO_REG_STAT];
     uint8_t* hwreg_ly = &gpu->gbm->hwio->data[UGB_HWIO_REG_LY];
+    uint8_t hwreg_lyc = gpu->gbm->hwio->data[UGB_HWIO_REG_LYC];
     uint8_t* hwreg_if = &gpu->gbm->hwio->data[UGB_HWIO_REG_IF];
 
     // Return if not enabled
     //TODO: clear screen first time
-    if (!(hwreg_lcdc & (0x01 << 7)))
-        return UGB_ERR_OK;
+    /*if (!(hwreg_lcdc & (0x01 << 7)))
+        return UGB_ERR_OK;*/
 
     // Get current mode
     int mode = *hwreg_stat & 0x3;
 
     // Increment GPU clock, see if we need to do something
     gpu->clock += cycles;
-    while (gpu->clock >= gpu->mode_clocks[mode])
+    if (gpu->clock >= gpu->mode_clocks[mode])
     {
         gpu->clock -= gpu->mode_clocks[mode];
+
+        // Check for LY==LYC coincidence now
+        if ((*hwreg_stat & (0x01 << 6)) && *hwreg_ly == hwreg_lyc)
+            *hwreg_if |= UGB_REG_IE_L_MSK;
 
         // Emulate GPU hardware
         switch (mode)
@@ -282,4 +295,14 @@ int ugb_gpu_step(ugb_gpu* gpu, size_t cycles)
     *hwreg_stat = (*hwreg_stat & ~0x3) | mode;
 
     return UGB_ERR_OK;
+}
+
+int ugb_gpu_lyc_hook(struct ugb_hwreg* reg, void* cookie)
+{
+    if (!reg || !cookie)
+        return UGB_ERR_BADARGS;
+
+    ugb_gbm* gbm = (ugb_gbm*) cookie;
+
+    return _update_stat_irq(gbm->gpu);
 }

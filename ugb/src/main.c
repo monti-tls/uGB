@@ -33,15 +33,36 @@
 #include "cpu.h"
 #include "hwio.h"
 #include "gpu.h"
+#include "joypad.h"
 #include "opcodes.h"
 #include "gbm.h"
 #include "debugger.h"
 #include "constants.h"
 #include "errno.h"
 
+enum
+{
+    UGB_CTX_RUNNING,
+    UGB_CTX_STEPPING,
+    UGB_CTX_STOPPED
+};
+
+typedef struct ugb_context
+{
+    ugb_gbm* gbm;
+    ugb_debugger_interf* interf;
+
+    int state;
+    int last_debugger_cmd;
+
+    pthread_mutex_t mutex;
+} ugb_context;
+
 void* sdl_main(void* cookie)
 {
-    ugb_gbm* gbm = (ugb_gbm*) cookie;
+    ugb_context* ctx = (ugb_context*) cookie;
+    ugb_gbm* gbm = ctx->gbm;
+    ugb_debugger_interf* interf = ctx->interf;
 
     if(SDL_Init(SDL_INIT_VIDEO) < 0)
     {
@@ -74,15 +95,131 @@ void* sdl_main(void* cookie)
         SDL_TEXTUREACCESS_STREAMING,
         UGB_GPU_SCREEN_W, UGB_GPU_SCREEN_H);
 
+    SDL_Event event;
+
+    float perf_freq = SDL_GetPerformanceFrequency();
+    float last_perf = 0.0;
+
+    double cpu_timer = 0.0;
+    double sync_freq = 60.0;
+
+    double sync_usecs = 1e6 / sync_freq;
+
     for (;;)
     {
+        /****************************/
+        /*** Process input events ***/
+        /****************************/
+
+        SDL_PollEvent(&event);
+
+        switch (event.type)
+        {
+            case SDL_QUIT:
+                return 0;
+
+            case SDL_KEYDOWN:
+            {
+                switch (event.key.keysym.sym)
+                {
+                    case SDLK_LEFT:   ugb_joypad_press(gbm->joypad, UGB_JOYPAD_LEFT); break;
+                    case SDLK_RIGHT:  ugb_joypad_press(gbm->joypad, UGB_JOYPAD_RIGHT); break;
+                    case SDLK_UP:     ugb_joypad_press(gbm->joypad, UGB_JOYPAD_UP); break;
+                    case SDLK_DOWN:   ugb_joypad_press(gbm->joypad, UGB_JOYPAD_DOWN); break;
+
+                    case SDLK_a:      ugb_joypad_press(gbm->joypad, UGB_JOYPAD_A); break;
+                    case SDLK_z:      ugb_joypad_press(gbm->joypad, UGB_JOYPAD_B); break;
+                    case SDLK_SPACE:  ugb_joypad_press(gbm->joypad, UGB_JOYPAD_START); break;
+                    case SDLK_RETURN: ugb_joypad_press(gbm->joypad, UGB_JOYPAD_SELECT); break;
+                }
+                break;
+            }
+
+            case SDL_KEYUP:
+            {
+                switch (event.key.keysym.sym)
+                {
+                    case SDLK_LEFT:   ugb_joypad_release(gbm->joypad, UGB_JOYPAD_LEFT); break;
+                    case SDLK_RIGHT:  ugb_joypad_release(gbm->joypad, UGB_JOYPAD_RIGHT); break;
+                    case SDLK_UP:     ugb_joypad_release(gbm->joypad, UGB_JOYPAD_UP); break;
+                    case SDLK_DOWN:   ugb_joypad_release(gbm->joypad, UGB_JOYPAD_DOWN); break;
+
+                    case SDLK_a:      ugb_joypad_release(gbm->joypad, UGB_JOYPAD_A); break;
+                    case SDLK_z:      ugb_joypad_release(gbm->joypad, UGB_JOYPAD_B); break;
+                    case SDLK_SPACE:  ugb_joypad_release(gbm->joypad, UGB_JOYPAD_START); break;
+                    case SDLK_RETURN: ugb_joypad_release(gbm->joypad, UGB_JOYPAD_SELECT); break;
+                }
+                break;
+            }
+        }
+
+        /**********************/
+        /*** Execution loop ***/
+        /**********************/
+
+        while (ctx->state != UGB_CTX_STOPPED && cpu_timer < sync_usecs)
+        {
+            if (ctx->state != UGB_CTX_STOPPED)
+            {
+                // Get current status from debugger
+                int sts = UGB_STS_CONTINUE;
+                if (interf && interf->status)
+                    sts = (*interf->status)(ctx->last_debugger_cmd, interf->cookie);
+
+                if (sts == UGB_STS_STOP)
+                    ctx->state = UGB_CTX_STOPPED;
+
+                if (ctx->state != UGB_CTX_STOPPED)
+                {
+                    int err;
+                    double usecs = 0.0;
+                    if ((err = ugb_gbm_step(gbm, &usecs)) != UGB_ERR_OK)
+                        printf("Error: %s\n", ugb_strerror(err));
+
+                    cpu_timer += usecs;
+                }
+            }
+
+            if (ctx->state == UGB_CTX_STEPPING)
+                ctx->state = UGB_CTX_STOPPED;
+        }
+
+        /***************************/
+        /*** Display framebuffer ***/
+        /***************************/
+
         SDL_UpdateTexture(tex, 0, gbm->gpu->framebuf, UGB_GPU_SCREEN_W);
 
         SDL_RenderClear(renderer);
         SDL_RenderCopy(renderer, tex, 0, 0);
         SDL_RenderPresent(renderer);
 
-        SDL_Delay(100);
+        /********************/
+        /*** Speed adjust ***/
+        /********************/
+
+        if (ctx->state != UGB_CTX_STOPPED)
+        {
+            float perf = SDL_GetPerformanceCounter();
+            double usecs = (1e6 * (perf - last_perf)) / perf_freq;
+            last_perf = perf;
+
+            double to_sleep = 0.0;
+            while (cpu_timer >= sync_usecs)
+            {
+                cpu_timer -= sync_usecs;
+                to_sleep += sync_usecs;
+            }
+
+            if (to_sleep < usecs)
+                ; // printf("Overshoot.\n");
+            else
+                SDL_Delay((to_sleep - usecs) / 1e3);
+        }
+        else
+        {
+            SDL_Delay(10);
+        }
     }
 
     SDL_DestroyWindow(window);
@@ -90,11 +227,35 @@ void* sdl_main(void* cookie)
     return 0;
 }
 
-int sb_hook(ugb_hwreg* reg, void* cookie)
+int debugger_command(int cmd, void* cookie)
 {
-    ugb_gbm* gbm = (ugb_gbm*) cookie;
+    ugb_context* context = (ugb_context*) cookie;
+    context->last_debugger_cmd = cmd;
 
-    printf("%c", gbm->hwio->data[UGB_HWIO_REG_SB]);
+    switch (cmd)
+    {
+        case UGB_CMD_STOP:
+            break;
+
+        case UGB_CMD_STEP:
+            break;
+
+        case UGB_CMD_CONTINUE:
+            break;
+
+        case UGB_CMD_RESET:
+            break;
+
+    }
+
+    return UGB_ERR_OK;
+}
+
+void* debugger_main(void* arg)
+{
+    ugb_context* ctx = (ugb_context*) arg;
+    ugb_debugger_mainloop(ctx->gbm, ctx->interf);
+
     return 0;
 }
 
@@ -155,17 +316,25 @@ int main(int argc, char** argv)
     ill->data = &ill_data[0];
     ugb_mmu_add_map(gbm->mmu, ill);
 
-    ugb_hwio_set_hook(gbm->hwio, UGB_HWIO_REG_SB, &sb_hook, (void*) gbm);
+    /*************************************************************/
+
+    ugb_context ctx;
+    pthread_mutex_init(&ctx.mutex, 0);
+
+    ctx.interf = malloc(sizeof(ugb_debugger_interf));
+    ctx.interf->cookie = &ctx;
+    ctx.interf->command = &debugger_command;
+    ctx.interf->status = 0;
+    ctx.gbm = gbm;
 
     // Start SDL display thread
-    pthread_t disp;
-    pthread_create(&disp, 0, &sdl_main, (void*) gbm);
+    pthread_t debugger;
+    // pthread_create(&debugger, 0, &debugger_main, (void*) &ctx);
 
-    int err = ugb_debugger_mainloop(gbm);
-    if (err < 0)
-        printf("error: %s\n", ugb_strerror(err));
+    sdl_main((void*) &ctx);
 
     // Cleanup
+    pthread_mutex_destroy(&ctx.mutex);
     ugb_gbm_destroy(gbm);
     munmap(file, sb.st_size);
     close(fd);

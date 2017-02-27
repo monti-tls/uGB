@@ -16,31 +16,40 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __GBM_GPU_H__
-#define __GBM_GPU_H__
+#ifndef __GBM_JOYPAD_H__
+#define __GBM_JOYPAD_H__
 
 #include "gbm.h"
 
 #include <stdint.h>
 
-typedef struct ugb_gpu
+enum
+{
+    UGB_JOYPAD_RIGHT  = (0x01 << 0),
+    UGB_JOYPAD_LEFT   = (0x01 << 1),
+    UGB_JOYPAD_UP     = (0x01 << 2),
+    UGB_JOYPAD_DOWN   = (0x01 << 3),
+
+    UGB_JOYPAD_A      = (0x01 << 4),
+    UGB_JOYPAD_B      = (0x01 << 5),
+    UGB_JOYPAD_SELECT = (0x01 << 6),
+    UGB_JOYPAD_START  = (0x01 << 7)
+};
+
+typedef struct ugb_joypad
 {
     ugb_gbm* gbm;
 
-    size_t clock;
-    size_t mode_clocks[4];
+    uint8_t buttons;
+} ugb_joypad;
 
-    uint8_t* framebuf;
-    uint8_t* vram;
-    uint8_t* oam;
-} ugb_gpu;
+ugb_joypad* ugb_joypad_create(ugb_gbm* gbm);
+void ugb_joypad_destroy(ugb_joypad* joypad);
 
-ugb_gpu* ugb_gpu_create(ugb_gbm* gbm);
-void ugb_gpu_destroy(ugb_gpu* gpu);
+int ugb_joypad_press(ugb_joypad* joypad, uint8_t keys);
+int ugb_joypad_release(ugb_joypad* joypad, uint8_t keys);
 
-int ugb_gpu_reset(ugb_gpu* gpu);
-int ugb_gpu_step(ugb_gpu* gpu, size_t cycles);
+int ugb_joypad_reset(ugb_joypad* joypad);
+int ugb_joypad_step(ugb_joypad* joypad);
 
-int ugb_gpu_lyc_hook(struct ugb_hwreg* reg, void* cookie);
-
-#endif // __GBM_GPU_H__
+#endif // __GBM_JOYPAD_H__

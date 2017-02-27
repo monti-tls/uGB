@@ -38,6 +38,7 @@ static ugb_breakpoint* _last_breakpoint = 0;
 static char _quit;
 static ugb_gbm* _gbm;
 static sigjmp_buf _jmpbuf;
+static ugb_debugger_interf* _interf;
 
 static char* _skip_whitespace(char* line);
 static char* _strip_whitespace(char* line);
@@ -105,10 +106,33 @@ void _handle_signals(int signo)
 {
     if (signo == SIGINT)
     {
+        (_interf->command)(UGB_CMD_STOP, _interf->cookie);
+
         printf("Interrupted.\n");
         _com_disassemble(0);
         siglongjmp(_jmpbuf, 1);
     }
+}
+
+int _interf_status(int last_cmd, void* cookie)
+{
+    if (last_cmd == UGB_CMD_CONTINUE)
+    {
+        ugb_breakpoint* match = 0;
+        for (ugb_breakpoint* bp = _breakpoints; bp; bp = bp->next)
+        {
+            if (bp->addr == *_gbm->cpu->regs.PC)
+            {
+                match = bp;
+                break;
+            }
+        }
+
+        if (match)
+            return UGB_STS_STOP;
+    }
+
+    return UGB_STS_CONTINUE;
 }
 
 void _com_help(char* args)
@@ -299,7 +323,7 @@ void _com_disassemble(char* args)
 void _com_step(char* args)
 {
     int err;
-    if ((err = ugb_gbm_step(_gbm)) != UGB_ERR_OK)
+    if ((err = (*_interf->command)(UGB_CMD_STEP, _interf->cookie)) != UGB_ERR_OK)
     {
         printf("Error: %s.\n", ugb_strerror(err));
         return;
@@ -310,37 +334,41 @@ void _com_step(char* args)
 
 void _com_continue(char* args)
 {
-    for (;;)
+    int err;
+
+    if ((err = (*_interf->command)(UGB_CMD_CONTINUE, _interf->cookie)) != UGB_ERR_OK)
     {
-        int err;
-        if ((err = ugb_gbm_step(_gbm)) != UGB_ERR_OK)
-        {
-            printf("Error: %s.\n", ugb_strerror(err));
-            return;
-        }
+        printf("Error: %s.\n", ugb_strerror(err));
+        return;
+    }
 
-        ugb_breakpoint* match = 0;
-        for (ugb_breakpoint* bp = _breakpoints; bp; bp = bp->next)
+    ugb_breakpoint* match = 0;
+    for (ugb_breakpoint* bp = _breakpoints; bp; bp = bp->next)
+    {
+        if (bp->addr == *_gbm->cpu->regs.PC)
         {
-            if (bp->addr == *_gbm->cpu->regs.PC)
-            {
-                match = bp;
-                break;
-            }
-        }
-
-        if (match)
-        {
-            printf("Stopped at breakpoint #%d (0x%04X).\n", match->id, match->addr);
-            _com_disassemble(0);
+            match = bp;
             break;
         }
     }
+
+    if (match)
+        printf("Stopped at breakpoint #%d (0x%04X).\n", match->id, match->addr);
+    else
+        printf("Target stopped unexpectedly at 0x%04X.\n", *_gbm->cpu->regs.PC);
+
+    _com_disassemble(0);
 }
 
 void _com_reset(char* args)
 {
-    ugb_gbm_reset(_gbm);
+    int err;
+    if ((err = (*_interf->command)(UGB_CMD_RESET, _interf->cookie)) != UGB_ERR_OK)
+    {
+        printf("Error: %s.\n", ugb_strerror(err));
+        return;
+    }
+
     _com_disassemble(0);
 }
 
@@ -536,12 +564,14 @@ int ugb_debugger_delete_breakpoint(int id)
     return UGB_ERR_NOENT;
 }
 
-int ugb_debugger_mainloop(ugb_gbm* gbm)
+int ugb_debugger_mainloop(ugb_gbm* gbm, ugb_debugger_interf* interf)
 {
-    if (!gbm)
+    if (!gbm || !interf)
         return UGB_ERR_BADARGS;
 
     _gbm = gbm;
+    _interf = interf;
+    _interf->status = &_interf_status;
 
     while (sigsetjmp(_jmpbuf, 1) != 0);
 

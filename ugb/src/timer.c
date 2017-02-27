@@ -125,7 +125,7 @@ int ugb_timer_div_hook(struct ugb_hwreg* reg, void* cookie)
 
     ugb_gbm* gbm = (ugb_gbm*) cookie;
 
-    // Any write to the DIV register writes a 0
+    // Any write to the DIV register writes a 0 and resets TIMA
     gbm->hwio->data[UGB_HWIO_REG_DIV] = 0;
     gbm->hwio->data[UGB_HWIO_REG_TIMA] = gbm->hwio->data[UGB_HWIO_REG_TMA];
 

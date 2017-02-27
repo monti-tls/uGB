@@ -23,6 +23,27 @@
 
 #include <stdint.h>
 
+enum
+{
+    UGB_CMD_STOP,
+    UGB_CMD_STEP,
+    UGB_CMD_CONTINUE,
+    UGB_CMD_RESET
+};
+
+enum
+{
+    UGB_STS_STOP,
+    UGB_STS_CONTINUE
+};
+
+typedef struct ugb_debugger_interf
+{
+    void* cookie;
+    int(*command)(int, void*);
+    int(*status)(int, void*);
+} ugb_debugger_interf;
+
 typedef struct ugb_breakpoint
 {
     int id;
@@ -35,6 +56,6 @@ typedef struct ugb_breakpoint
 int ugb_debugger_add_breakpoint(uint16_t addr);
 int ugb_debugger_delete_breakpoint(int id);
 
-int ugb_debugger_mainloop(ugb_gbm* gbm);
+int ugb_debugger_mainloop(ugb_gbm* gbm, ugb_debugger_interf* interf);
 
 #endif // __UGB_DEBUGGER_H__
